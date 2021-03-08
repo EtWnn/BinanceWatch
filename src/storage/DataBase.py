@@ -1,7 +1,7 @@
 import sys
 import os
 from enum import Enum
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Union
 import sqlite3
 
 from src.storage.tables import Table
@@ -9,11 +9,15 @@ from src.utils.LoggerGenerator import LoggerGenerator
 
 
 class SQLConditionEnum(Enum):
+    """
+    https://www.techonthenet.com/sqlite/comparison_operators.php
+    """
     equal = '='
     greater_equal = '>='
     greater = '>'
     lower = '<'
     lower_equal = '<='
+    diff = '!='
 
 
 class DataBase:
@@ -54,16 +58,21 @@ class DataBase:
         :return: None or the row of value
         """
         conditions_list = [(table.columns_names[0], SQLConditionEnum.equal, key_value)]
-        rows = self.get_conditions_rows(table, conditions_list)
+        rows = self.get_conditions_rows(table, conditions_list=conditions_list)
         if len(rows):
             return rows[0]
 
     def get_conditions_rows(self, table: Table,
+                            selection: Optional[Union[str, List[str]]] = None,
                             conditions_list: Optional[List[Tuple[str, SQLConditionEnum, Any]]] = None) -> List:
+        if selection is None:
+            selection = '*'
+        elif isinstance(selection, List):
+            selection = ','.join(selection)
         if conditions_list is None:
             conditions_list = []
-        execution_cmd = f"SELECT * from {table.name}"
-        execution_cmd = self._add_conditions(execution_cmd, conditions_list)
+        execution_cmd = f"SELECT {selection} from {table.name}"
+        execution_cmd = self._add_conditions(execution_cmd, conditions_list=conditions_list)
         return self._fetch_rows(execution_cmd)
 
     def get_all_rows(self, table: Table) -> List:

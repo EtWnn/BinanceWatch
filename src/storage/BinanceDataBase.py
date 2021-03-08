@@ -33,4 +33,4 @@ class BinanceDataBase(DataBase):
             conditions_list.append((tables.BINANCE_SPOT_TRADE_TABLE.columns_names[3],
                                     SQLConditionEnum.equal,
                                     ref_asset))
-        return self.get_conditions_rows(tables.BINANCE_SPOT_TRADE_TABLE, conditions_list)
+        return self.get_conditions_rows(tables.BINANCE_SPOT_TRADE_TABLE, conditions_list=conditions_list)

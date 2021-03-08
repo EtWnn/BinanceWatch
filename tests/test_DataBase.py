@@ -38,5 +38,5 @@ def test_inserts_search(verbose=0, **kwargs):
         (table.columns_names[1], SQLConditionEnum.equal, 18),
         (table.columns_names[3], SQLConditionEnum.greater_equal, 55),
     ]
-    retrieved_rows = db.get_conditions_rows(table, conditions)
+    retrieved_rows = db.get_conditions_rows(table, conditions_list=conditions)
     assert rows[1:2] == retrieved_rows
