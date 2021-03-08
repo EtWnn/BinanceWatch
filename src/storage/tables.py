@@ -9,12 +9,29 @@ class Table:
     columns_sql_types: List[str]
 
 
-SpotTradeTable = Table(
+BINANCE_SPOT_TRADE_TABLE = Table(
     'spot_trade',
     [
+        'id',
+        'millistamp',
+        'asset',
+        'ref_asset',
+        'qty',
+        'price',
+        'fee',
+        'fee_asset',
+        'isBuyer'
 
     ],
     [
-
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL',
+        'TEXT',
+        'INTEGER'
     ]
 )
