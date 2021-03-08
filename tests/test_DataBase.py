@@ -40,3 +40,6 @@ def test_inserts_search(verbose=0, **kwargs):
     ]
     retrieved_rows = db.get_conditions_rows(table, conditions_list=conditions)
     assert rows[1:2] == retrieved_rows
+
+    # check max weight is right
+    assert max([r[-1] for r in rows]) == db.get_conditions_rows(table, selection="MAX(weight)")[0][0]

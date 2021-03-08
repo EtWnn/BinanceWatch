@@ -12,6 +12,7 @@ class Table:
 BINANCE_SPOT_TRADE_TABLE = Table(
     'spot_trade',
     [
+        'key',
         'id',
         'millistamp',
         'asset',
@@ -24,6 +25,7 @@ BINANCE_SPOT_TRADE_TABLE = Table(
 
     ],
     [
+        'TEXT',
         'INTEGER',
         'INTEGER',
         'TEXT',
