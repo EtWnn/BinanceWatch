@@ -14,12 +14,12 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
-    def add_dividend(self, div_id: str, div_time: int, asset: str, amount: float, auto_commit: bool = True):
+    def add_dividend(self, div_id: int, div_time: int, asset: str, amount: float, auto_commit: bool = True):
         """
         add a dividend to the database
 
         :param div_id: dividend id
-        :type div_id: str
+        :type div_id: int
         :param div_time: millistamp of dividend reception
         :type div_time: int
         :param asset: name of the dividend unit
@@ -62,6 +62,25 @@ class BinanceDataBase(DataBase):
                                     SQLConditionEnum.lower,
                                     end_time))
         return self.get_conditions_rows(tables.SPOT_DIVIDEND_TABLE, conditions_list=conditions_list)
+
+    def get_last_spot_dividend_time(self) -> int:
+        """
+        fetch the latest time a dividend has been distributed on the spot account. If None is found,
+        return the millistamp corresponding to 2017/1/1
+
+        :return:
+        """
+        selection = f"MAX({tables.SPOT_DIVIDEND_TABLE.columns_names[1]})"
+        result = self.get_conditions_rows(tables.SPOT_WITHDRAW_TABLE,
+                                          selection=selection)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
 
     def add_withdraw(self, withdraw_id: str, tx_id: str, apply_time: int, asset: str, amount: float, fee: float,
                      auto_commit: bool = True):
