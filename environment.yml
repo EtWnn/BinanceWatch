@@ -9,5 +9,5 @@ dependencies:
   - pip=20.3.3
   - pip:
     - dateparser
-    - python-binance==0.7.9
+    - python-binance
     - requests
