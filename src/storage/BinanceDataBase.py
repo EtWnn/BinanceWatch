@@ -14,6 +14,128 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
+    def add_dividend(self, div_id: str, div_time: int, asset: str, amount: float, auto_commit: bool = True):
+        """
+        add a dividend to the database
+
+        :param div_id: dividend id
+        :type div_id: str
+        :param div_time: millistamp of dividend reception
+        :type div_time: int
+        :param asset: name of the dividend unit
+        :type asset: str
+        :param amount: amount of asset distributed
+        :type amount: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        row = (div_id, div_time, asset, amount)
+        self.add_row(tables.SPOT_DIVIDEND_TABLE, row, auto_commit=auto_commit)
+
+    def get_spot_dividends(self, asset: Optional[str] = None, start_time: Optional[int] = None,
+                           end_time: Optional[int] = None):
+        """
+        return dividends stored in the database. Asset type and time filters can be used
+
+        :param asset: fetch only dividends of this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only withdraws after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only withdraws before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        conditions_list = []
+        if asset is not None:
+            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[2],
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(tables.SPOT_DIVIDEND_TABLE, conditions_list=conditions_list)
+
+    def add_withdraw(self, withdraw_id: str, tx_id: str, apply_time: int, asset: str, amount: float, fee: float,
+                     auto_commit: bool = True):
+        """
+        add a withdraw to the database
+
+        :param withdraw_id: binance if of the withdraw
+        :type withdraw_id: str
+        :param tx_id: transaction id
+        :type tx_id: str
+        :param apply_time: millistamp when the withdraw was requested
+        :type apply_time: int
+        :param asset: name of the token
+        :type asset: str
+        :param amount: amount of token withdrawn
+        :type amount: float
+        :param fee: amount of the asset paid for the withdraw
+        :type fee: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        row = (withdraw_id, tx_id, apply_time, asset, amount, fee)
+        self.add_row(tables.SPOT_WITHDRAW_TABLE, row, auto_commit=auto_commit)
+
+    def get_spot_withdraws(self, asset: Optional[str] = None, start_time: Optional[int] = None,
+                           end_time: Optional[int] = None):
+        """
+        return withdraws stored in the database. Asset type and time filters can be used
+
+        :param asset: fetch only withdraws of this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only withdraws after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only withdraws before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        conditions_list = []
+        if asset is not None:
+            conditions_list.append((tables.SPOT_WITHDRAW_TABLE.columns_names[3],
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((tables.SPOT_WITHDRAW_TABLE.columns_names[2],
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((tables.SPOT_WITHDRAW_TABLE.columns_names[2],
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(tables.SPOT_WITHDRAW_TABLE, conditions_list=conditions_list)
+
+    def get_last_spot_withdraw_time(self) -> int:
+        """
+        fetch the latest time a withdraw has been made on the spot account. If None is found, return the millistamp
+        corresponding to 2017/1/1
+
+        :return:
+        """
+        selection = f"MAX({tables.SPOT_WITHDRAW_TABLE.columns_names[2]})"
+        result = self.get_conditions_rows(tables.SPOT_WITHDRAW_TABLE,
+                                          selection=selection)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
+
     def add_deposit(self, tx_id: str, insert_time: int, amount: float, asset: str, auto_commit=True):
         """
         add a deposit to the database

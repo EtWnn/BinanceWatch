@@ -53,3 +53,40 @@ SPOT_DEPOSIT_TABLE = Table(
         'REAL'
     ]
 )
+
+
+SPOT_WITHDRAW_TABLE = Table(
+    'spot_withdraw',
+    [
+        'id',
+        'txId',
+        'applyTime',
+        'asset',
+        'amount',
+        'fee'
+    ],
+    [
+        'TEXT',
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'REAL'
+    ]
+)
+
+SPOT_DIVIDEND_TABLE = Table(
+    'spot_dividend_table',
+    [
+        'id',
+        'divTime',
+        'asset',
+        'amount'
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL'
+    ]
+)

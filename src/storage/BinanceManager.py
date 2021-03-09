@@ -1,12 +1,13 @@
 import datetime
-from typing import Optional
+import math
+
 from binance.client import Client
 from tqdm import tqdm
 
 from src.utils.time_utils import datetime_to_millistamp
 from src.storage.BinanceDataBase import BinanceDataBase
 from src.utils.credentials import CredentialManager
-import tables
+from src.storage import tables
 
 
 class BinanceManager:
@@ -18,6 +19,41 @@ class BinanceManager:
         self.db = BinanceDataBase()
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
+
+    def update_spot_withdraws(self, day_jump: float = 90):
+        """
+        This fetch the crypto withdraws made on the spot account from the last withdraw time in the database to now.
+        It is done with multiple call, each having a time window of day_jump days.
+        The withdraws are then saved in the database.
+        Only successful withdraws are fetched.
+
+        :param day_jump: length of the time window for each call (max 90)
+        :type day_jump: float
+        :return: None
+        :rtype: None
+        """
+        delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
+        start_time = self.db.get_last_spot_withdraw_time() + 1
+        now_millistamp = datetime_to_millistamp(datetime.datetime.now(tz=datetime.timezone.utc))
+        pbar = tqdm(total=math.ceil((now_millistamp - start_time)/delta_jump))
+        pbar.set_description("fetching spot withdraws")
+        while start_time < now_millistamp:
+            result = self.client.get_withdraw_history(startTime=start_time, endTime=start_time + delta_jump, status=6)
+            withdraws = result['withdrawList']
+            for withdraw in withdraws:
+                self.db.add_withdraw(withdraw_id=withdraw['id'],
+                                     tx_id=withdraw['txId'],
+                                     apply_time=int(withdraw['applyTime']),
+                                     asset=withdraw['asset'],
+                                     amount=float(withdraw['amount']),
+                                     fee=float(withdraw['transactionFee']),
+                                     auto_commit=False
+                                     )
+            pbar.update()
+            start_time += delta_jump
+            if len(withdraws):
+                self.db.commit()
+        pbar.close()
 
     def update_spot_deposits(self, day_jump: float = 90):
         """
@@ -34,20 +70,18 @@ class BinanceManager:
         delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
         start_time = self.db.get_last_spot_deposit_time() + 1
         now_millistamp = datetime_to_millistamp(datetime.datetime.now(tz=datetime.timezone.utc))
-        pbar = tqdm(total=now_millistamp - start_time)
+        pbar = tqdm(total=math.ceil((now_millistamp - start_time)/delta_jump))
+        pbar.set_description("fetching spot deposits")
         while start_time < now_millistamp:
             result = self.client.get_deposit_history(startTime=start_time, endTime=start_time + delta_jump, status=1)
-            try:
-                deposits = result['depositList']
-            except KeyError:
-                continue
+            deposits = result['depositList']
             for deposit in deposits:
                 self.db.add_deposit(tx_id=deposit['txId'],
                                     asset=deposit['asset'],
                                     insert_time=int(deposit['insertTime']),
                                     amount=float(deposit['amount']),
                                     auto_commit=False)
-            pbar.update(delta_jump)
+            pbar.update()
             start_time += delta_jump
             if len(deposits):
                 self.db.commit()
@@ -100,10 +134,14 @@ class BinanceManager:
         :rtype: None
         """
         symbols_info = self.client.get_exchange_info()['symbols']
-        for symbol_info in tqdm(symbols_info):
+        pbar = tqdm(total=len(symbols_info))
+        for symbol_info in symbols_info:
+            pbar.set_description(f"fetching {symbol_info['symbol']}")
             self.update_spot_symbol_trades(asset=symbol_info['baseAsset'],
                                            ref_asset=symbol_info['quoteAsset'],
                                            limit=limit)
+            pbar.update()
+        pbar.close()
 
     def drop_spot_trade_table(self):
         """
@@ -123,6 +161,15 @@ class BinanceManager:
         """
         self.db.drop_table(tables.SPOT_DEPOSIT_TABLE)
 
+    def drop_spot_withdraw_table(self):
+        """
+        erase the spot withdraws table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.SPOT_WITHDRAW_TABLE)
+
     def drop_all_tables(self):
         """
         erase all the tables of the database
@@ -132,3 +179,4 @@ class BinanceManager:
         """
         self.drop_spot_deposit_table()
         self.drop_spot_trade_table()
+        self.drop_spot_withdraw_table()
