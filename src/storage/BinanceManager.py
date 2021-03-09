@@ -20,6 +20,43 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_spot_dividends(self, day_jump: float = 90, limit: int = 500):
+        limit = min(500, limit)
+        delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
+        start_time = self.db.get_last_spot_dividend_time() + 1
+        now_millistamp = datetime_to_millistamp(datetime.datetime.now(tz=datetime.timezone.utc))
+        pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
+        pbar.set_description("fetching spot dividends")
+        while start_time < now_millistamp:
+            params = {
+                'startTime': start_time,
+                'endTime': start_time + delta_jump,
+                'limit': limit
+            }
+            # the stable working version of client.get_asset_dividend_history is not released yet,
+            # for now it has a post error
+            result = self.client._request_margin_api('get',
+                                                     'asset/assetDividend',
+                                                     True,
+                                                     data=params
+                                                     )
+            dividends = result['rows']
+            for div in dividends:
+                self.db.add_dividend(div_id=int(div['tranId']),
+                                     div_time=int(div['divTime']),
+                                     asset=div['asset'],
+                                     amount=float(div['amount']),
+                                     auto_commit=False
+                                     )
+            pbar.update()
+            if len(dividends) < limit:
+                start_time += delta_jump
+            else:  # limit was reached before the end of the time windows
+                start_time = int(dividends[0]['divTime']) + 1
+            if len(dividends):
+                self.db.commit()
+        pbar.close()
+
     def update_spot_withdraws(self, day_jump: float = 90):
         """
         This fetch the crypto withdraws made on the spot account from the last withdraw time in the database to now.
@@ -35,7 +72,7 @@ class BinanceManager:
         delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
         start_time = self.db.get_last_spot_withdraw_time() + 1
         now_millistamp = datetime_to_millistamp(datetime.datetime.now(tz=datetime.timezone.utc))
-        pbar = tqdm(total=math.ceil((now_millistamp - start_time)/delta_jump))
+        pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot withdraws")
         while start_time < now_millistamp:
             result = self.client.get_withdraw_history(startTime=start_time, endTime=start_time + delta_jump, status=6)
@@ -70,7 +107,7 @@ class BinanceManager:
         delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
         start_time = self.db.get_last_spot_deposit_time() + 1
         now_millistamp = datetime_to_millistamp(datetime.datetime.now(tz=datetime.timezone.utc))
-        pbar = tqdm(total=math.ceil((now_millistamp - start_time)/delta_jump))
+        pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot deposits")
         while start_time < now_millistamp:
             result = self.client.get_deposit_history(startTime=start_time, endTime=start_time + delta_jump, status=1)
@@ -170,6 +207,15 @@ class BinanceManager:
         """
         self.db.drop_table(tables.SPOT_WITHDRAW_TABLE)
 
+    def drop_spot_dividends_table(self):
+        """
+        erase the spot dividends table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.SPOT_DIVIDEND_TABLE)
+
     def drop_all_tables(self):
         """
         erase all the tables of the database
@@ -180,3 +226,4 @@ class BinanceManager:
         self.drop_spot_deposit_table()
         self.drop_spot_trade_table()
         self.drop_spot_withdraw_table()
+        self.drop_spot_dividends_table()

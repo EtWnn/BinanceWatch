@@ -84,7 +84,7 @@ SPOT_DIVIDEND_TABLE = Table(
         'amount'
     ],
     [
-        'TEXT',
+        'INTEGER',
         'INTEGER',
         'TEXT',
         'REAL'
