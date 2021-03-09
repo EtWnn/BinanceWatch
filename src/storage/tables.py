@@ -9,7 +9,7 @@ class Table:
     columns_sql_types: List[str]
 
 
-BINANCE_SPOT_TRADE_TABLE = Table(
+SPOT_TRADE_TABLE = Table(
     'spot_trade',
     [
         'key',
@@ -35,5 +35,21 @@ BINANCE_SPOT_TRADE_TABLE = Table(
         'REAL',
         'TEXT',
         'INTEGER'
+    ]
+)
+
+SPOT_DEPOSIT_TABLE = Table(
+    'spot_deposit',
+    [
+        'txId',
+        'insertTime',
+        'asset',
+        'amount',
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL'
     ]
 )
