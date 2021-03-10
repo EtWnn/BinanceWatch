@@ -291,15 +291,23 @@ class BinanceManager:
         """
         self.db.drop_table(tables.SPOT_DUST_TABLE)
 
-    def drop_all_tables(self):
+    def drop_lending_interest_table(self):
         """
-        erase all the tables of the database
+        erase the lending interests
 
         :return: None
         :rtype: None
         """
-        self.drop_spot_deposit_table()
-        self.drop_spot_trade_table()
-        self.drop_spot_withdraw_table()
-        self.drop_spot_dividends_table()
-        self.drop_dust_table()
+        self.db.drop_table(tables.LENDING_INTEREST_TABLE)
+
+    def drop_all_tables(self):
+        """
+        erase all the tables of the database by calling all the methods having 'drop' and 'table' in their names
+
+        :return: None
+        :rtype: None
+        """
+        methods = [m for m in dir(self) if 'drop' in m and 'table' in m and callable(getattr(self, m))]
+        for m in methods:
+            if m != "drop_all_tables":
+                getattr(self, m)()
