@@ -14,6 +14,61 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
+    def add_dust(self, dust_id: int, time: int, asset: str, asset_amount: float, bnb_amount: float, bnb_fee: float,
+                 auto_commit: bool = True):
+        """
+        add dust operation to the database
+
+        :param dust_id: id of the operation
+        :type dust_id: int
+        :param time: millitstamp of the operation
+        :type time: int
+        :param asset: asset that got converted to BNB
+        :type asset: str
+        :param asset_amount: amount of asset that got converted
+        :type asset_amount: float
+        :param bnb_amount: amount received from the conversion
+        :type bnb_amount: float
+        :param bnb_fee: fee amount in BNB
+        :type bnb_fee: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+
+        row = (dust_id, time, asset, asset_amount, bnb_amount, bnb_fee)
+        self.add_row(tables.SPOT_DUST_TABLE, row, auto_commit=auto_commit)
+
+    def get_spot_dusts(self, asset: Optional[str] = None, start_time: Optional[int] = None,
+                       end_time: Optional[int] = None):
+        """
+        return dusts stored in the database. Asset type and time filters can be used
+
+        :param asset: fetch only dusts from this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only dusts after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only dusts before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        conditions_list = []
+        if asset is not None:
+            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[2],
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(tables.SPOT_DUST_TABLE, conditions_list=conditions_list)
+
     def add_dividend(self, div_id: int, div_time: int, asset: str, amount: float, auto_commit: bool = True):
         """
         add a dividend to the database
@@ -41,9 +96,9 @@ class BinanceDataBase(DataBase):
 
         :param asset: fetch only dividends of this asset
         :type asset: Optional[str]
-        :param start_time: fetch only withdraws after this millistamp
+        :param start_time: fetch only dividends after this millistamp
         :type start_time: Optional[int]
-        :param end_time: fetch only withdraws before this millistamp
+        :param end_time: fetch only dividends before this millistamp
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]

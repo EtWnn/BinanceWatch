@@ -1,6 +1,7 @@
 import datetime
 import math
 
+import dateparser
 from binance.client import Client
 from tqdm import tqdm
 
@@ -20,6 +21,35 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_spot_dusts(self):
+        """
+        update the dust database. As there is no way to get the dust by id or timeframe, the table is cleared
+        for each update
+
+        :return: None
+        :rtype: None
+        """
+        self.drop_dust_table()
+
+        result = self.client.get_dust_log()
+        dusts = result['results']
+        pbar = tqdm(total=dusts['total'])
+        pbar.set_description("fetching dusts")
+        for d in dusts['rows']:
+            for sub_dust in d['logs']:
+                date_time = dateparser.parse(sub_dust['operateTime'] + 'Z')
+                self.db.add_dust(dust_id=str(sub_dust['tranId']) + sub_dust['fromAsset'],
+                                 time=datetime_to_millistamp(date_time),
+                                 asset=sub_dust['fromAsset'],
+                                 asset_amount=sub_dust['amount'],
+                                 bnb_amount=sub_dust['transferedAmount'],
+                                 bnb_fee=sub_dust['serviceChargeAmount'],
+                                 auto_commit=False
+                                 )
+            pbar.update()
+        self.db.commit()
+        pbar.close()
+
     def update_spot_dividends(self, day_jump: float = 90, limit: int = 500):
         limit = min(500, limit)
         delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
@@ -34,7 +64,7 @@ class BinanceManager:
                 'limit': limit
             }
             # the stable working version of client.get_asset_dividend_history is not released yet,
-            # for now it has a post error
+            # for now it has a post error, so this protected member is used in the meantime
             result = self.client._request_margin_api('get',
                                                      'asset/assetDividend',
                                                      True,
@@ -216,6 +246,15 @@ class BinanceManager:
         """
         self.db.drop_table(tables.SPOT_DIVIDEND_TABLE)
 
+    def drop_dust_table(self):
+        """
+        erase the spot dust table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.SPOT_DUST_TABLE)
+
     def drop_all_tables(self):
         """
         erase all the tables of the database
@@ -227,3 +266,4 @@ class BinanceManager:
         self.drop_spot_trade_table()
         self.drop_spot_withdraw_table()
         self.drop_spot_dividends_table()
+        self.drop_dust_table()

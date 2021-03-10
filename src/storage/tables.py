@@ -90,3 +90,23 @@ SPOT_DIVIDEND_TABLE = Table(
         'REAL'
     ]
 )
+
+SPOT_DUST_TABLE = Table(
+    'spot_dust_table',
+    [
+        'id',
+        'time',
+        'asset',
+        'asset_amount',
+        'bnb_amount',
+        'bnb_fee',
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL'
+    ]
+)
