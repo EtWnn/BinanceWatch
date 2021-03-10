@@ -21,6 +21,42 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_lending_interests(self):
+        """
+        update the lending interests database.
+        for each update
+
+        :return: None
+        :rtype: None
+        """
+        lending_types = ['DAILY', 'ACTIVITY', 'CUSTOMIZED_FIXED']
+        pbar = tqdm(total=3)
+        for lending_type in lending_types:
+            pbar.set_description(f"fetching lending type {lending_type}")
+            latest_time = self.db.get_last_lending_interest_time(lending_type=lending_type) + 3600 * 1000  # add 1 hour
+            current = 1
+            while True:
+                lending_interests = self.client.get_lending_interest_history(lendingType=lending_type,
+                                                                             startTime=latest_time,
+                                                                             current=current,
+                                                                             limit=100)
+                for li in lending_interests:
+                    print(li)
+                    self.db.add_lending_interest(int_id=str(li['time']) + li['asset'] + li['lendingType'],
+                                                 time=li['time'],
+                                                 lending_type=li['lendingType'],
+                                                 asset=li['asset'],
+                                                 amount=li['interest']
+                                                 )
+
+                if lending_interests:
+                    current += 1  # next page
+                    self.db.commit()
+                else:
+                    break
+            pbar.update()
+        pbar.close()
+
     def update_spot_dusts(self):
         """
         update the dust database. As there is no way to get the dust by id or timeframe, the table is cleared

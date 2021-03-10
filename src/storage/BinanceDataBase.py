@@ -14,13 +14,99 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
-    def add_dust(self, dust_id: int, time: int, asset: str, asset_amount: float, bnb_amount: float, bnb_fee: float,
+    def add_lending_interest(self, int_id: str, time: int, lending_type: str, asset: str, amount: float,
+                             auto_commit: bool = True):
+        """
+        add an lending interest to the database
+
+        :param int_id: if for the interest
+        :type int_id: str
+        :param time: millitstamp of the operation
+        :type time: int
+        :param lending_type: either 'DAILY', 'ACTIVITY' or 'CUSTOMIZED_FIXED'
+        :type lending_type: str
+        :param asset: asset that got converted to BNB
+        :type asset: str
+        :param amount: amount of asset received
+        :type amount: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        row = (int_id, time, lending_type, asset, amount)
+        self.add_row(tables.LENDING_INTEREST_TABLE, row, auto_commit=auto_commit)
+
+    def get_lending_interests(self, lending_type: Optional[str] = None, asset: Optional[str] = None,
+                              start_time: Optional[int] = None, end_time: Optional[int] = None):
+        """
+        return lending interests stored in the database. Asset type and time filters can be used
+
+        :param lending_type:fetch only interests from this lending type
+        :type lending_type: Optional[str]
+        :param asset: fetch only interests from this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only interests after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only interests before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        conditions_list = []
+        if lending_type is not None:
+            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[2],
+                                    SQLConditionEnum.equal,
+                                    lending_type))
+        if asset is not None:
+            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[3],
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[1],
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[1],
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(tables.LENDING_INTEREST_TABLE, conditions_list=conditions_list)
+
+    def get_last_lending_interest_time(self, lending_type: Optional[str] = None):
+        """
+        return the latest time when an interest was recieved.
+        If None, return the millistamp corresponding to 2017/01/01
+
+        :param lending_type: type of lending
+        :type lending_type: str
+        :return: millistamp
+        :rtype: int
+        """
+        conditions_list = []
+        if lending_type is not None:
+            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[2],
+                                    SQLConditionEnum.equal,
+                                    lending_type))
+        selection = f"MAX({tables.LENDING_INTEREST_TABLE.columns_names[1]})"
+        result = self.get_conditions_rows(tables.LENDING_INTEREST_TABLE,
+                                          selection=selection,
+                                          conditions_list=conditions_list)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
+
+    def add_dust(self, dust_id: str, time: int, asset: str, asset_amount: float, bnb_amount: float, bnb_fee: float,
                  auto_commit: bool = True):
         """
         add dust operation to the database
 
         :param dust_id: id of the operation
-        :type dust_id: int
+        :type dust_id: str
         :param time: millitstamp of the operation
         :type time: int
         :param asset: asset that got converted to BNB

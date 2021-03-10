@@ -110,3 +110,21 @@ SPOT_DUST_TABLE = Table(
         'REAL'
     ]
 )
+
+LENDING_INTEREST_TABLE = Table(
+    'lending_interest_table',
+    [
+        'id',
+        'time',
+        'lending_type',
+        'asset',
+        'amount',
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+    ]
+)
