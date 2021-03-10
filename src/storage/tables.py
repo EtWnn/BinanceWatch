@@ -9,12 +9,122 @@ class Table:
     columns_sql_types: List[str]
 
 
-SpotTradeTable = Table(
+SPOT_TRADE_TABLE = Table(
     'spot_trade',
     [
+        'key',
+        'id',
+        'millistamp',
+        'asset',
+        'ref_asset',
+        'qty',
+        'price',
+        'fee',
+        'fee_asset',
+        'isBuyer'
 
     ],
     [
+        'TEXT',
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL',
+        'TEXT',
+        'INTEGER'
+    ]
+)
 
+SPOT_DEPOSIT_TABLE = Table(
+    'spot_deposit',
+    [
+        'txId',
+        'insertTime',
+        'asset',
+        'amount',
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL'
+    ]
+)
+
+
+SPOT_WITHDRAW_TABLE = Table(
+    'spot_withdraw',
+    [
+        'id',
+        'txId',
+        'applyTime',
+        'asset',
+        'amount',
+        'fee'
+    ],
+    [
+        'TEXT',
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'REAL'
+    ]
+)
+
+SPOT_DIVIDEND_TABLE = Table(
+    'spot_dividend_table',
+    [
+        'id',
+        'divTime',
+        'asset',
+        'amount'
+    ],
+    [
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'REAL'
+    ]
+)
+
+SPOT_DUST_TABLE = Table(
+    'spot_dust_table',
+    [
+        'id',
+        'time',
+        'asset',
+        'asset_amount',
+        'bnb_amount',
+        'bnb_fee',
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL'
+    ]
+)
+
+LENDING_INTEREST_TABLE = Table(
+    'lending_interest_table',
+    [
+        'id',
+        'time',
+        'lending_type',
+        'asset',
+        'amount',
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
     ]
 )
