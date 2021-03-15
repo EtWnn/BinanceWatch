@@ -454,7 +454,7 @@ class BinanceDataBase(DataBase):
             conditions_list.append((table.refAsset,
                                     SQLConditionEnum.equal,
                                     ref_asset))
-        return self.get_conditions_rows(table, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list, order_list=[table.tdTime])
 
     def get_max_trade_id(self, asset: str, ref_asset: str, trade_type: str) -> int:
         """

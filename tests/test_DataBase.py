@@ -81,6 +81,7 @@ def test_inserts_search_2(verbose=0, **kwargs):
         (15, 'Karl', 55.5),
         (18, 'Kitty', 61.1),
         (18, 'Kitty', 61.1),  # no set primary key -> should allow identical rows
+        (18, 'Marcus', 58.2),
         (18, 'Marc', 48.1),
         (55, 'Jean', 78.1)
     ]
@@ -96,8 +97,15 @@ def test_inserts_search_2(verbose=0, **kwargs):
         (table2.age, SQLConditionEnum.equal, 18),
         (table2.weight, SQLConditionEnum.greater_equal, 55),
     ]
-    retrieved_rows = db.get_conditions_rows(table2, conditions_list=conditions)
-    assert rows[1:3] == retrieved_rows
+    order_list = [table2.weight]
+    retrieved_rows = db.get_conditions_rows(table2, conditions_list=conditions, order_list=order_list)
+    sub_rows = list(rows[1:4])
+    if verbose:
+        print("rows retrieved:")
+        for row in retrieved_rows:
+            print('\t', row)
+    sub_rows.sort(key=lambda x: x[-1])
+    assert sub_rows == retrieved_rows
 
     # check min ge is right
     assert max([r[0] for r in rows]) == db.get_conditions_rows(table2, selection=f"MAX({table2.age})")[0][0]
