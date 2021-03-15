@@ -172,16 +172,16 @@ CROSS_MARGIN_TRADE_TABLE = Table(
 CROSS_MARGIN_LOAN_TABLE = Table(
     "cross_margin_loan_table",
     [
-        'txId',
         'loanTime',
         'asset',
         'principal',
     ],
     [
         'INTEGER',
-        'INTEGER',
         'TEXT',
         'REAL'
     ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
 
 )
