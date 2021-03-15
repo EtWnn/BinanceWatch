@@ -57,7 +57,9 @@ class DataBase:
         :param key_value: key value of the row
         :return: None or the row of value
         """
-        conditions_list = [(table.columns_names[0], SQLConditionEnum.equal, key_value)]
+        if table.primary_key is None:
+            raise ValueError(f"table {table.name} has no explicit primary key")
+        conditions_list = [(table.primary_key, SQLConditionEnum.equal, key_value)]
         rows = self.get_conditions_rows(table, conditions_list=conditions_list)
         if len(rows):
             return rows[0]
@@ -104,8 +106,8 @@ class DataBase:
             self.commit()
 
     def update_row(self, table: Table, row: Tuple, auto_commit=True):
-        row_s = ", ".join(f"{n} = {v}" for n, v in zip(table.columns_names[1:], row[1:]))
-        execution_order = f"UPDATE {table.name} SET {row_s} WHERE {table.columns_names[0]} = {row[0]}"
+        row_s = ", ".join(f"{n} = {v}" for n, v in zip(table.columns_names, row))
+        execution_order = f"UPDATE {table.name} SET {row_s} WHERE {table.primary_key} = {row[0]}"
         self.db_cursor.execute(execution_order)
         if auto_commit:
             self.commit()
@@ -160,7 +162,9 @@ class DataBase:
         :param table: Table instance with the config if the table to create
         :return: execution command for the table creation
         """
-        cmd = f"[{table.columns_names[0]}] {table.columns_sql_types[0]} PRIMARY KEY, "
-        for arg_name, arg_type in zip(table.columns_names[1:], table.columns_sql_types[1:]):
+        cmd = ""
+        if table.primary_key is not None:
+            cmd = f"[{table.primary_key}] {table.primary_key_sql_type} PRIMARY KEY, "
+        for arg_name, arg_type in zip(table.columns_names, table.columns_sql_types):
             cmd = cmd + f"[{arg_name}] {arg_type}, "
         return f"CREATE TABLE {table.name}\n({cmd[:-2]})"

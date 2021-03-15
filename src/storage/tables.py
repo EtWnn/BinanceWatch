@@ -3,6 +3,9 @@ from typing import List, Optional
 
 
 class Table:
+    """
+    @DynamicAttrs
+    """
 
     def __init__(self, name: str, columns_names: List[str], columns_sql_types: List[str],
                  primary_key: Optional[str] = None, primary_key_sql_type: Optional[str] = None):
@@ -13,7 +16,11 @@ class Table:
         self.primary_key_sql_type = primary_key_sql_type
 
         for column_name in self.columns_names:
-            setattr(self, column_name, column_name)
+            try:
+                value = getattr(self, column_name)
+                raise ValueError(f"the name {column_name} conflicts with an existing attribute of value {value}")
+            except AttributeError:
+                setattr(self, column_name, column_name)
 
         if self.primary_key is not None:
             setattr(self, self.primary_key, self.primary_key)
