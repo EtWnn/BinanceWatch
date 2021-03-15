@@ -1,19 +1,27 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
-@dataclass
 class Table:
-    name: str
-    columns_names: List[str]
-    columns_sql_types: List[str]
+
+    def __init__(self, name: str, columns_names: List[str], columns_sql_types: List[str],
+                 primary_key: Optional[str] = None, primary_key_sql_type: Optional[str] = None):
+        self.name = name
+        self.columns_names = columns_names
+        self.columns_sql_types = columns_sql_types
+        self.primary_key = primary_key
+        self.primary_key_sql_type = primary_key_sql_type
+
+        for column_name in self.columns_names:
+            setattr(self, column_name, column_name)
+
+        if self.primary_key is not None:
+            setattr(self, self.primary_key, self.primary_key)
 
 
 SPOT_TRADE_TABLE = Table(
     'spot_trade',
     [
-        'key',
-        'id',
         'millistamp',
         'asset',
         'ref_asset',
@@ -25,8 +33,6 @@ SPOT_TRADE_TABLE = Table(
 
     ],
     [
-        'TEXT',
-        'INTEGER',
         'INTEGER',
         'TEXT',
         'TEXT',
@@ -35,30 +41,31 @@ SPOT_TRADE_TABLE = Table(
         'REAL',
         'TEXT',
         'INTEGER'
-    ]
+    ],
+    primary_key='tradeId',
+    primary_key_sql_type='INTEGER'
 )
 
 SPOT_DEPOSIT_TABLE = Table(
     'spot_deposit',
     [
-        'txId',
         'insertTime',
         'asset',
         'amount',
     ],
     [
-        'TEXT',
         'INTEGER',
         'TEXT',
         'REAL'
-    ]
+    ],
+    primary_key='txId',
+    primary_key_sql_type='TEXT'
 )
 
 
 SPOT_WITHDRAW_TABLE = Table(
     'spot_withdraw',
     [
-        'id',
         'txId',
         'applyTime',
         'asset',
@@ -67,34 +74,35 @@ SPOT_WITHDRAW_TABLE = Table(
     ],
     [
         'TEXT',
-        'TEXT',
         'INTEGER',
         'TEXT',
         'REAL',
         'REAL'
-    ]
+    ],
+    primary_key='withdrawId',
+    primary_key_sql_type='TEXT'
 )
 
 SPOT_DIVIDEND_TABLE = Table(
     'spot_dividend_table',
     [
-        'id',
         'divTime',
         'asset',
         'amount'
     ],
     [
         'INTEGER',
-        'INTEGER',
         'TEXT',
         'REAL'
-    ]
+    ],
+    primary_key='divId',
+    primary_key_sql_type='INTEGER'
 )
 
 SPOT_DUST_TABLE = Table(
     'spot_dust_table',
     [
-        'id',
+        'dustId',
         'time',
         'asset',
         'asset_amount',
@@ -114,14 +122,12 @@ SPOT_DUST_TABLE = Table(
 LENDING_INTEREST_TABLE = Table(
     'lending_interest_table',
     [
-        'id',
         'time',
         'lending_type',
         'asset',
         'amount',
     ],
     [
-        'TEXT',
         'INTEGER',
         'TEXT',
         'TEXT',
