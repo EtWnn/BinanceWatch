@@ -22,7 +22,21 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
-    def update_asset_loans(self, asset: str, isolated_symbol=''):
+    def update_cross_margin_loans(self):
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # no end point yet
+        assets = set()
+        for symbol_info in symbols_info:
+            assets.add(symbol_info['base'])
+            assets.add(symbol_info['quote'])
+
+        pbar = tqdm(total=len(assets))
+        for asset in assets:
+            pbar.set_description(f"fetching {asset} cross margin loans")
+            self.update_margin_asset_loans(asset=asset)
+            pbar.update()
+        pbar.close()
+
+    def update_margin_asset_loans(self, asset: str, isolated_symbol=''):
         """
         update the loans database for a specified asset.
 
@@ -40,7 +54,7 @@ class BinanceManager:
         while True:
             loans = self.client.get_margin_loan_details(asset=asset,
                                                         current=current,
-                                                        startTime=latest_time,
+                                                        startTime=latest_time + 1000,
                                                         archived=archived,
                                                         isolatedSymbol=isolated_symbol,
                                                         size=100)
@@ -101,9 +115,9 @@ class BinanceManager:
             if len(new_trades) < limit:
                 break
 
-    def update_all_margin_trades_trades(self, limit: int = 1000):
+    def update_all_cross_margin_trades(self, limit: int = 1000):
         """
-        This update the spot trades in the database for every trading pairs
+        This update the cross margin trades in the database for every trading pairs
 
         :param limit: max size of each trade requests
         :type limit: int
