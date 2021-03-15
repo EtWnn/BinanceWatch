@@ -143,7 +143,7 @@ LENDING_INTEREST_TABLE = Table(
 )
 
 CROSS_MARGIN_TRADE_TABLE = Table(
-    'margin_trade',
+    'cross_margin_trade',
     [
         'tradeId',
         'tdTime',
@@ -167,4 +167,21 @@ CROSS_MARGIN_TRADE_TABLE = Table(
         'TEXT',
         'INTEGER'
     ]
+)
+
+CROSS_MARGIN_LOAN_TABLE = Table(
+    "cross_margin_loan_table",
+    [
+        'txId',
+        'loanTime',
+        'asset',
+        'principal',
+    ],
+    [
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'REAL'
+    ],
+
 )

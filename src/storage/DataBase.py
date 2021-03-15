@@ -79,7 +79,6 @@ class DataBase:
         execution_cmd = f"SELECT {selection} from {table.name}"
         execution_cmd = self._add_conditions(execution_cmd, conditions_list=conditions_list)
         execution_cmd = self._add_order(execution_cmd, order_list=order_list)
-        print(execution_cmd)
         return self._fetch_rows(execution_cmd)
 
     def get_all_rows(self, table: Table) -> List:

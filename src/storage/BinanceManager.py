@@ -1,5 +1,6 @@
 import datetime
 import math
+import time
 
 import dateparser
 from binance.client import Client
@@ -20,6 +21,47 @@ class BinanceManager:
         self.db = BinanceDataBase()
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
+
+    def update_asset_loans(self, asset: str, isolated_symbol=''):
+        """
+        update the loans database for a specified asset.
+
+        :param asset: asset for the loans
+        :type asset: str
+        :param isolated_symbol: the symbol must be specified of isolated margin, otherwise cross margin data is returned
+        :type isolated_symbol: str
+        :return: None
+        :rtype: None
+        """
+        margin_type = 'cross' if isolated_symbol == '' else 'isolated'
+        latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+        archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
+        current = 1
+        while True:
+            loans = self.client.get_margin_loan_details(asset=asset,
+                                                        current=current,
+                                                        startTime=latest_time,
+                                                        archived=archived,
+                                                        isolatedSymbol=isolated_symbol,
+                                                        size=100)
+            for loan in loans['rows']:
+                if loan['status'] == 'CONFIRMED':
+                    self.db.add_loan(margin_type=margin_type,
+                                     tx_id=loan['txId'],
+                                     loan_time=loan['timestamp'],
+                                     asset=loan['asset'],
+                                     principal=loan['principal'],
+                                     auto_commit=False)
+
+            if len(loans['rows']):
+                current += 1  # next page
+                self.db.commit()
+            elif archived:  # switching to non archived loans
+                current = 1
+                archived = False
+                latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+            else:
+                break
 
     def update_cross_margin_symbol_trades(self, asset: str, ref_asset: str, limit: int = 1000):
         """
@@ -81,7 +123,6 @@ class BinanceManager:
     def update_lending_interests(self):
         """
         update the lending interests database.
-        for each update
 
         :return: None
         :rtype: None
@@ -104,7 +145,7 @@ class BinanceManager:
                                                  amount=li['interest']
                                                  )
 
-                if lending_interests:
+                if len(lending_interests):
                     current += 1  # next page
                     self.db.commit()
                 else:
@@ -358,12 +399,21 @@ class BinanceManager:
 
     def drop_cross_margin_trade_table(self):
         """
-        erase the spot trades table
+        erase the cross margin trades table
 
         :return: None
         :rtype: None
         """
         self.db.drop_table(tables.CROSS_MARGIN_TRADE_TABLE)
+
+    def drop_cross_margin_loan_table(self):
+        """
+        erase the cross margin loan table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.CROSS_MARGIN_LOAN_TABLE)
 
     def drop_all_tables(self):
         """
