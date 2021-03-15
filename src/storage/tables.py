@@ -31,11 +31,11 @@ SPOT_TRADE_TABLE = Table(
     [
         'millistamp',
         'asset',
-        'ref_asset',
+        'refAsset',
         'qty',
         'price',
         'fee',
-        'fee_asset',
+        'feeAsset',
         'isBuyer'
 
     ],
@@ -112,9 +112,9 @@ SPOT_DUST_TABLE = Table(
         'dustId',
         'time',
         'asset',
-        'asset_amount',
-        'bnb_amount',
-        'bnb_fee',
+        'assetAmount',
+        'bnbAmount',
+        'bnbFee',
     ],
     [
         'TEXT',
@@ -130,7 +130,7 @@ LENDING_INTEREST_TABLE = Table(
     'lending_interest_table',
     [
         'time',
-        'lending_type',
+        'lendingType',
         'asset',
         'amount',
     ],
