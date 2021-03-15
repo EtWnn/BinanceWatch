@@ -374,15 +374,17 @@ class BinanceDataBase(DataBase):
             return default
         return result
 
-    def add_spot_trade(self, trade_id: int, millistamp: int, asset: str, ref_asset: str, qty: float, price: float,
-                       fee: float, fee_asset: str, is_buyer: bool, auto_commit=True):
+    def add_trade(self, trade_type: str, trade_id: int, trade_time: int, asset: str, ref_asset: str, qty: float,
+                  price: float, fee: float, fee_asset: str, is_buyer: bool, auto_commit=True):
         """
         add a trade to the database
 
+        :param trade_type: type trade executed
+        :type trade_type: string, must be one of {'spot', 'cross_margin'}
         :param trade_id: id of the trade (binance id, unique per trading pair)
         :type trade_id: int
-        :param millistamp: millistamp of the trade
-        :type millistamp: int
+        :param trade_time: millistamp of the trade
+        :type trade_time: int
         :param asset: name of the asset in the trading pair (ex 'BTC' for 'BTCUSDT')
         :type asset: string
         :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
@@ -402,14 +404,22 @@ class BinanceDataBase(DataBase):
         :return: None
         :rtype: None
         """
-        row = (trade_id, millistamp, asset, ref_asset, qty, price, fee, fee_asset, int(is_buyer))
-        self.add_row(tables.SPOT_TRADE_TABLE, row, auto_commit)
+        row = (trade_id, trade_time, asset, ref_asset, qty, price, fee, fee_asset, int(is_buyer))
+        if trade_type == 'spot':
+            table = tables.SPOT_TRADE_TABLE
+        elif trade_type == 'cross_margin':
+            table = tables.CROSS_MARGIN_TRADE_TABLE
+        else:
+            raise ValueError(f"trade type should be one of ('spot', 'cross_margin') but {trade_type} was received")
+        self.add_row(table, row, auto_commit)
 
-    def get_spot_trades(self, start_time: Optional[int] = None, end_time: Optional[int] = None,
-                        asset: Optional[str] = None, ref_asset: Optional[str] = None):
+    def get_trades(self, trade_type: str, start_time: Optional[int] = None, end_time: Optional[int] = None,
+                   asset: Optional[str] = None, ref_asset: Optional[str] = None):
         """
         return trades stored in the database. asset type, ref_asset type and time filters can be used
 
+        :param trade_type: type trade executed
+        :type trade_type: string, must be one of ('spot', 'cross_margin')
         :param start_time: fetch only trades after this millistamp
         :type start_time: Optional[int]
         :param end_time: fetch only trades before this millistamp
@@ -421,8 +431,13 @@ class BinanceDataBase(DataBase):
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
         """
+        if trade_type == 'spot':
+            table = tables.SPOT_TRADE_TABLE
+        elif trade_type == 'cross_margin':
+            table = tables.CROSS_MARGIN_TRADE_TABLE
+        else:
+            raise ValueError(f"trade type should be one of ('spot', 'cross_margin') but {trade_type} was received")
         conditions_list = []
-        table = tables.SPOT_TRADE_TABLE
         if start_time is not None:
             conditions_list.append((table.tdTime,
                                     SQLConditionEnum.greater_equal,
@@ -439,9 +454,9 @@ class BinanceDataBase(DataBase):
             conditions_list.append((table.refAsset,
                                     SQLConditionEnum.equal,
                                     ref_asset))
-        return self.get_conditions_rows(tables.SPOT_TRADE_TABLE, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_max_trade_id(self, asset: str, ref_asset: str) -> int:
+    def get_max_trade_id(self, asset: str, ref_asset: str, trade_type: str) -> int:
         """
         return the latest trade id for a trading pair. If none is found, return -1
 
@@ -449,10 +464,18 @@ class BinanceDataBase(DataBase):
         :type asset: string
         :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
         :type ref_asset: string
+        :param trade_type: type trade executed
+        :type trade_type: string, must be one of {'spot', 'cross_margin'}
         :return: latest trade id
         :rtype: int
         """
-        table = tables.SPOT_TRADE_TABLE
+        if trade_type == 'spot':
+            table = tables.SPOT_TRADE_TABLE
+        elif trade_type == 'cross_margin':
+            table = tables.CROSS_MARGIN_TRADE_TABLE
+        else:
+            raise ValueError(f"trade type should be one of {'spot', 'cross_margin'} but {trade_type} was received")
+
         selection = f"MAX({table.tradeId})"
         conditions_list = [
             (table.asset,

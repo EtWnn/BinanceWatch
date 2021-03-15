@@ -21,6 +21,63 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_cross_margin_symbol_trades(self, asset: str, ref_asset: str, limit: int = 1000):
+        """
+        This update the cross_margin trades in the database for a single trading pair.
+        It will check the last trade id and will requests the all trades after this trade_id.
+
+        :param asset: name of the asset in the trading pair (ex 'BTC' for 'BTCUSDT')
+        :type asset: string
+        :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
+        :type ref_asset: string
+        :param limit: max size of each trade requests
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
+        limit = min(1000, limit)
+        symbol = asset + ref_asset
+        last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'cross_margin')
+        while True:
+            new_trades = self.client.get_margin_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            for trade in new_trades:
+                self.db.add_trade(trade_type='cross_margin',
+                                  trade_id=int(trade['id']),
+                                  trade_time=int(trade['time']),
+                                  asset=asset,
+                                  ref_asset=ref_asset,
+                                  qty=float(trade['qty']),
+                                  price=float(trade['price']),
+                                  fee=float(trade['commission']),
+                                  fee_asset=trade['commissionAsset'],
+                                  is_buyer=trade['isBuyer'],
+                                  auto_commit=False
+                                  )
+                last_trade_id = max(last_trade_id, int(trade['id']))
+            if len(new_trades):
+                self.db.commit()
+            if len(new_trades) < limit:
+                break
+
+    def update_all_margin_trades_trades(self, limit: int = 1000):
+        """
+        This update the spot trades in the database for every trading pairs
+
+        :param limit: max size of each trade requests
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # no end point yet
+        pbar = tqdm(total=len(symbols_info))
+        for symbol_info in symbols_info:
+            pbar.set_description(f"fetching {symbol_info['symbol']}")
+            self.update_cross_margin_symbol_trades(asset=symbol_info['base'],
+                                                   ref_asset=symbol_info['quote'],
+                                                   limit=limit)
+            pbar.update()
+        pbar.close()
+
     def update_lending_interests(self):
         """
         update the lending interests database.
@@ -204,21 +261,22 @@ class BinanceManager:
         """
         limit = min(1000, limit)
         symbol = asset + ref_asset
-        last_trade_id = self.db.get_max_trade_id(asset, ref_asset)
+        last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'spot')
         while True:
             new_trades = self.client.get_my_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
             for trade in new_trades:
-                self.db.add_spot_trade(trade_id=int(trade['id']),
-                                       millistamp=int(trade['time']),
-                                       asset=asset,
-                                       ref_asset=ref_asset,
-                                       qty=float(trade['qty']),
-                                       price=float(trade['price']),
-                                       fee=float(trade['commission']),
-                                       fee_asset=trade['commissionAsset'],
-                                       is_buyer=trade['isBuyer'],
-                                       auto_commit=False
-                                       )
+                self.db.add_trade(trade_type='spot',
+                                  trade_id=int(trade['id']),
+                                  trade_time=int(trade['time']),
+                                  asset=asset,
+                                  ref_asset=ref_asset,
+                                  qty=float(trade['qty']),
+                                  price=float(trade['price']),
+                                  fee=float(trade['commission']),
+                                  fee_asset=trade['commissionAsset'],
+                                  is_buyer=trade['isBuyer'],
+                                  auto_commit=False
+                                  )
                 last_trade_id = max(last_trade_id, int(trade['id']))
             if len(new_trades):
                 self.db.commit()
@@ -297,6 +355,15 @@ class BinanceManager:
         :rtype: None
         """
         self.db.drop_table(tables.LENDING_INTEREST_TABLE)
+
+    def drop_cross_margin_trade_table(self):
+        """
+        erase the spot trades table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.CROSS_MARGIN_TRADE_TABLE)
 
     def drop_all_tables(self):
         """
