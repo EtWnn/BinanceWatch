@@ -41,9 +41,7 @@ class BinanceManager:
                                                                              current=current,
                                                                              limit=100)
                 for li in lending_interests:
-                    print(li)
-                    self.db.add_lending_interest(int_id=str(li['time']) + li['asset'] + li['lendingType'],
-                                                 time=li['time'],
+                    self.db.add_lending_interest(time=li['time'],
                                                  lending_type=li['lendingType'],
                                                  asset=li['asset'],
                                                  amount=li['interest']
@@ -74,7 +72,7 @@ class BinanceManager:
         for d in dusts['rows']:
             for sub_dust in d['logs']:
                 date_time = dateparser.parse(sub_dust['operateTime'] + 'Z')
-                self.db.add_dust(dust_id=str(sub_dust['tranId']) + sub_dust['fromAsset'],
+                self.db.add_dust(tran_id=sub_dust['tranId'],
                                  time=datetime_to_millistamp(date_time),
                                  asset=sub_dust['fromAsset'],
                                  asset_amount=sub_dust['amount'],

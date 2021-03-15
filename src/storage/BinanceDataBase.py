@@ -14,13 +14,11 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
-    def add_lending_interest(self, int_id: str, time: int, lending_type: str, asset: str, amount: float,
+    def add_lending_interest(self, time: int, lending_type: str, asset: str, amount: float,
                              auto_commit: bool = True):
         """
         add an lending interest to the database
 
-        :param int_id: if for the interest
-        :type int_id: str
         :param time: millitstamp of the operation
         :type time: int
         :param lending_type: either 'DAILY', 'ACTIVITY' or 'CUSTOMIZED_FIXED'
@@ -34,7 +32,7 @@ class BinanceDataBase(DataBase):
         :return: None
         :rtype: None
         """
-        row = (int_id, time, lending_type, asset, amount)
+        row = (time, lending_type, asset, amount)
         self.add_row(tables.LENDING_INTEREST_TABLE, row, auto_commit=auto_commit)
 
     def get_lending_interests(self, lending_type: Optional[str] = None, asset: Optional[str] = None,
@@ -54,27 +52,28 @@ class BinanceDataBase(DataBase):
         :rtype: List[Tuple]
         """
         conditions_list = []
+        table = tables.LENDING_INTEREST_TABLE
         if lending_type is not None:
-            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[2],
+            conditions_list.append((table.lendingType,
                                     SQLConditionEnum.equal,
                                     lending_type))
         if asset is not None:
-            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[3],
+            conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
                                     asset))
         if start_time is not None:
-            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[1],
+            conditions_list.append((table.interestTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
-            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[1],
+            conditions_list.append((table.interestTime,
                                     SQLConditionEnum.lower,
                                     end_time))
-        return self.get_conditions_rows(tables.LENDING_INTEREST_TABLE, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
 
     def get_last_lending_interest_time(self, lending_type: Optional[str] = None):
         """
-        return the latest time when an interest was recieved.
+        return the latest time when an interest was received.
         If None, return the millistamp corresponding to 2017/01/01
 
         :param lending_type: type of lending
@@ -83,12 +82,13 @@ class BinanceDataBase(DataBase):
         :rtype: int
         """
         conditions_list = []
+        table = tables.LENDING_INTEREST_TABLE
         if lending_type is not None:
-            conditions_list.append((tables.LENDING_INTEREST_TABLE.columns_names[2],
+            conditions_list.append((table.lendingType,
                                     SQLConditionEnum.equal,
                                     lending_type))
-        selection = f"MAX({tables.LENDING_INTEREST_TABLE.columns_names[1]})"
-        result = self.get_conditions_rows(tables.LENDING_INTEREST_TABLE,
+        selection = f"MAX({table.interestTime})"
+        result = self.get_conditions_rows(table,
                                           selection=selection,
                                           conditions_list=conditions_list)
         default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
@@ -100,13 +100,14 @@ class BinanceDataBase(DataBase):
             return default
         return result
 
-    def add_dust(self, dust_id: str, time: int, asset: str, asset_amount: float, bnb_amount: float, bnb_fee: float,
+    def add_dust(self, tran_id: str, time: int, asset: str, asset_amount: float, bnb_amount: float, bnb_fee: float,
                  auto_commit: bool = True):
         """
         add dust operation to the database
+        https://binance-docs.github.io/apidocs/spot/en/#dustlog-user_data
 
-        :param dust_id: id of the operation
-        :type dust_id: str
+        :param tran_id: id of the transaction (non unique)
+        :type tran_id: str
         :param time: millitstamp of the operation
         :type time: int
         :param asset: asset that got converted to BNB
@@ -123,7 +124,7 @@ class BinanceDataBase(DataBase):
         :rtype: None
         """
 
-        row = (dust_id, time, asset, asset_amount, bnb_amount, bnb_fee)
+        row = (tran_id, time, asset, asset_amount, bnb_amount, bnb_fee)
         self.add_row(tables.SPOT_DUST_TABLE, row, auto_commit=auto_commit)
 
     def get_spot_dusts(self, asset: Optional[str] = None, start_time: Optional[int] = None,
@@ -141,19 +142,20 @@ class BinanceDataBase(DataBase):
         :rtype: List[Tuple]
         """
         conditions_list = []
+        table = tables.SPOT_DUST_TABLE
         if asset is not None:
-            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[2],
+            conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
                                     asset))
         if start_time is not None:
-            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+            conditions_list.append((table.dustTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
-            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+            conditions_list.append((table.dustTime,
                                     SQLConditionEnum.lower,
                                     end_time))
-        return self.get_conditions_rows(tables.SPOT_DUST_TABLE, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
 
     def add_dividend(self, div_id: int, div_time: int, asset: str, amount: float, auto_commit: bool = True):
         """
@@ -190,19 +192,20 @@ class BinanceDataBase(DataBase):
         :rtype: List[Tuple]
         """
         conditions_list = []
+        table = tables.SPOT_DIVIDEND_TABLE
         if asset is not None:
-            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[2],
+            conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
                                     asset))
         if start_time is not None:
-            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+            conditions_list.append((table.divTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
-            conditions_list.append((tables.SPOT_DIVIDEND_TABLE.columns_names[1],
+            conditions_list.append((table.divTime,
                                     SQLConditionEnum.lower,
                                     end_time))
-        return self.get_conditions_rows(tables.SPOT_DIVIDEND_TABLE, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
 
     def get_last_spot_dividend_time(self) -> int:
         """
@@ -211,9 +214,11 @@ class BinanceDataBase(DataBase):
 
         :return:
         """
-        selection = f"MAX({tables.SPOT_DIVIDEND_TABLE.columns_names[1]})"
-        result = self.get_conditions_rows(tables.SPOT_WITHDRAW_TABLE,
+        table = tables.SPOT_DIVIDEND_TABLE
+        selection = f"MAX({table.divTime})"
+        result = self.get_conditions_rows(table,
                                           selection=selection)
+
         default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
         try:
             result = result[0][0]
@@ -263,19 +268,20 @@ class BinanceDataBase(DataBase):
         :rtype: List[Tuple]
         """
         conditions_list = []
+        table = tables.SPOT_WITHDRAW_TABLE
         if asset is not None:
-            conditions_list.append((tables.SPOT_WITHDRAW_TABLE.columns_names[3],
+            conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
                                     asset))
         if start_time is not None:
-            conditions_list.append((tables.SPOT_WITHDRAW_TABLE.columns_names[2],
+            conditions_list.append((table.applyTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
-            conditions_list.append((tables.SPOT_WITHDRAW_TABLE.columns_names[2],
+            conditions_list.append((table.applyTime,
                                     SQLConditionEnum.lower,
                                     end_time))
-        return self.get_conditions_rows(tables.SPOT_WITHDRAW_TABLE, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
 
     def get_last_spot_withdraw_time(self) -> int:
         """
@@ -284,8 +290,9 @@ class BinanceDataBase(DataBase):
 
         :return:
         """
-        selection = f"MAX({tables.SPOT_WITHDRAW_TABLE.columns_names[2]})"
-        result = self.get_conditions_rows(tables.SPOT_WITHDRAW_TABLE,
+        table = tables.SPOT_WITHDRAW_TABLE
+        selection = f"MAX({table.applyTime})"
+        result = self.get_conditions_rows(table,
                                           selection=selection)
         default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
         try:
@@ -331,19 +338,20 @@ class BinanceDataBase(DataBase):
         :rtype: List[Tuple]
         """
         conditions_list = []
+        table = tables.SPOT_DEPOSIT_TABLE
         if asset is not None:
-            conditions_list.append((tables.SPOT_DEPOSIT_TABLE.columns_names[2],
+            conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
                                     asset))
         if start_time is not None:
-            conditions_list.append((tables.SPOT_DEPOSIT_TABLE.columns_names[1],
+            conditions_list.append((table.insertTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
-            conditions_list.append((tables.SPOT_DEPOSIT_TABLE.columns_names[1],
+            conditions_list.append((table.insertTime,
                                     SQLConditionEnum.lower,
                                     end_time))
-        return self.get_conditions_rows(tables.SPOT_DEPOSIT_TABLE, conditions_list=conditions_list)
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
 
     def get_last_spot_deposit_time(self) -> int:
         """
@@ -352,9 +360,11 @@ class BinanceDataBase(DataBase):
 
         :return:
         """
-        selection = f"MAX({tables.SPOT_DEPOSIT_TABLE.columns_names[1]})"
-        result = self.get_conditions_rows(tables.SPOT_DEPOSIT_TABLE,
+        table = tables.SPOT_DEPOSIT_TABLE
+        selection = f"MAX({table.insertTime})"
+        result = self.get_conditions_rows(table,
                                           selection=selection)
+
         default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
         try:
             result = result[0][0]
@@ -392,8 +402,7 @@ class BinanceDataBase(DataBase):
         :return: None
         :rtype: None
         """
-        key = f'{asset}{ref_asset}{trade_id}'
-        row = (key, trade_id, millistamp, asset, ref_asset, qty, price, fee, fee_asset, int(is_buyer))
+        row = (trade_id, millistamp, asset, ref_asset, qty, price, fee, fee_asset, int(is_buyer))
         self.add_row(tables.SPOT_TRADE_TABLE, row, auto_commit)
 
     def get_spot_trades(self, start_time: Optional[int] = None, end_time: Optional[int] = None,
@@ -413,20 +422,21 @@ class BinanceDataBase(DataBase):
         :rtype: List[Tuple]
         """
         conditions_list = []
+        table = tables.SPOT_TRADE_TABLE
         if start_time is not None:
-            conditions_list.append((tables.SPOT_TRADE_TABLE.columns_names[2],
+            conditions_list.append((table.tdTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
-            conditions_list.append((tables.SPOT_TRADE_TABLE.columns_names[2],
+            conditions_list.append((table.tdTime,
                                     SQLConditionEnum.lower,
                                     end_time))
         if asset is not None:
-            conditions_list.append((tables.SPOT_TRADE_TABLE.columns_names[3],
+            conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
                                     asset))
         if ref_asset is not None:
-            conditions_list.append((tables.SPOT_TRADE_TABLE.columns_names[4],
+            conditions_list.append((table.refAsset,
                                     SQLConditionEnum.equal,
                                     ref_asset))
         return self.get_conditions_rows(tables.SPOT_TRADE_TABLE, conditions_list=conditions_list)
@@ -442,18 +452,17 @@ class BinanceDataBase(DataBase):
         :return: latest trade id
         :rtype: int
         """
-        selection = f"MAX({tables.SPOT_TRADE_TABLE.columns_names[1]})"
+        table = tables.SPOT_TRADE_TABLE
+        selection = f"MAX({table.tradeId})"
         conditions_list = [
-            (tables.SPOT_TRADE_TABLE.columns_names[3],
+            (table.asset,
              SQLConditionEnum.equal,
              asset),
-            (tables.SPOT_TRADE_TABLE.columns_names[4],
+            (table.refAsset,
              SQLConditionEnum.equal,
              ref_asset)
         ]
-        result = self.get_conditions_rows(tables.SPOT_TRADE_TABLE,
-                                          selection=selection,
-                                          conditions_list=conditions_list)
+        result = self.get_conditions_rows(table, selection=selection, conditions_list=conditions_list)
         try:
             result = result[0][0]
         except IndexError:

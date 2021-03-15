@@ -29,7 +29,8 @@ class Table:
 SPOT_TRADE_TABLE = Table(
     'spot_trade',
     [
-        'millistamp',
+        'tradeId',
+        'tdTime',
         'asset',
         'refAsset',
         'qty',
@@ -41,6 +42,7 @@ SPOT_TRADE_TABLE = Table(
     ],
     [
         'INTEGER',
+        'INTEGER',
         'TEXT',
         'TEXT',
         'REAL',
@@ -48,9 +50,7 @@ SPOT_TRADE_TABLE = Table(
         'REAL',
         'TEXT',
         'INTEGER'
-    ],
-    primary_key='tradeId',
-    primary_key_sql_type='INTEGER'
+    ]
 )
 
 SPOT_DEPOSIT_TABLE = Table(
@@ -109,15 +109,15 @@ SPOT_DIVIDEND_TABLE = Table(
 SPOT_DUST_TABLE = Table(
     'spot_dust_table',
     [
-        'dustId',
-        'time',
+        'tranId',
+        'dustTime',
         'asset',
         'assetAmount',
         'bnbAmount',
         'bnbFee',
     ],
     [
-        'TEXT',
+        'INTEGER',
         'INTEGER',
         'TEXT',
         'REAL',
@@ -129,7 +129,7 @@ SPOT_DUST_TABLE = Table(
 LENDING_INTEREST_TABLE = Table(
     'lending_interest_table',
     [
-        'time',
+        'interestTime',
         'lendingType',
         'asset',
         'amount',
