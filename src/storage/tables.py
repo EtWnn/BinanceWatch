@@ -141,3 +141,82 @@ LENDING_INTEREST_TABLE = Table(
         'REAL',
     ]
 )
+
+CROSS_MARGIN_TRADE_TABLE = Table(
+    'cross_margin_trade',
+    [
+        'tradeId',
+        'tdTime',
+        'asset',
+        'refAsset',
+        'qty',
+        'price',
+        'fee',
+        'feeAsset',
+        'isBuyer'
+
+    ],
+    [
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL',
+        'TEXT',
+        'INTEGER'
+    ]
+)
+
+CROSS_MARGIN_LOAN_TABLE = Table(
+    "cross_margin_loan_table",
+    [
+        'loanTime',
+        'asset',
+        'principal',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
+
+CROSS_MARGIN_REPAY_TABLE = Table(
+    "cross_margin_repay_table",
+    [
+        'repayTime',
+        'asset',
+        'principal',
+        'interest',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
+
+CROSS_MARGIN_INTEREST_TABLE = Table(
+    "cross_margin_interest_table",
+    [
+        'interestTime',
+        'asset',
+        'interest',
+        'interestType'
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'TEXT'
+    ]
+)

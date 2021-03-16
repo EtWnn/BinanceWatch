@@ -66,15 +66,19 @@ class DataBase:
 
     def get_conditions_rows(self, table: Table,
                             selection: Optional[Union[str, List[str]]] = None,
-                            conditions_list: Optional[List[Tuple[str, SQLConditionEnum, Any]]] = None) -> List:
+                            conditions_list: Optional[List[Tuple[str, SQLConditionEnum, Any]]] = None,
+                            order_list: Optional[List[str]] = None) -> List:
         if selection is None:
             selection = '*'
         elif isinstance(selection, List):
             selection = ','.join(selection)
         if conditions_list is None:
             conditions_list = []
+        if order_list is None:
+            order_list = []
         execution_cmd = f"SELECT {selection} from {table.name}"
         execution_cmd = self._add_conditions(execution_cmd, conditions_list=conditions_list)
+        execution_cmd = self._add_order(execution_cmd, order_list=order_list)
         return self._fetch_rows(execution_cmd)
 
     def get_all_rows(self, table: Table) -> List:
@@ -143,7 +147,8 @@ class DataBase:
     def _add_conditions(execution_cmd: str, conditions_list: List[Tuple[str, SQLConditionEnum, Any]]):
         """
         add a list of condition to an SQL command
-        :param execution_cmd: string with 'WHERE' statement
+        :param execution_cmd: SQL command without 'WHERE' statement
+        :type execution_cmd: str
         :param conditions_list:
         :return:
         """
@@ -152,6 +157,26 @@ class DataBase:
             for column_name, condition, value in conditions_list:
                 add_cmd = add_cmd + f" {column_name} {condition.value} '{value}' AND"
             return execution_cmd + add_cmd[:-4]
+        else:
+            return execution_cmd
+
+    @staticmethod
+    def _add_order(execution_cmd: str, order_list: List[str]):
+        """
+        add an order specification to an SQL command
+
+        :param execution_cmd: SQL command without 'ORDER BY' statement
+        :type execution_cmd: str
+        :param order_list:
+        :type order_list:
+        :return:
+        :rtype:
+        """
+        if len(order_list):
+            add_cmd = ' ORDER BY'
+            for column_name in order_list:
+                add_cmd = add_cmd + f" {column_name},"
+            return execution_cmd + add_cmd[:-1] + ' ASC'
         else:
             return execution_cmd
 

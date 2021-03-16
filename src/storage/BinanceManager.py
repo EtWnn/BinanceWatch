@@ -1,5 +1,6 @@
 import datetime
 import math
+import time
 
 import dateparser
 from binance.client import Client
@@ -21,10 +22,247 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_cross_margin_interests(self):
+        """
+        update the interests for all cross margin assets
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-repay-record-user_data
+
+        :return:
+        :rtype:
+        """
+        margin_type = 'cross'
+        latest_time = self.db.get_last_margin_interest_time(margin_type)
+        archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
+        current = 1
+        while True:
+            params = {
+                'current': current,
+                'startTime': latest_time + 1000,
+                'size': 100,
+                'archived': archived
+            }
+            # no built-in method yet in python-binance for margin/interestHistory
+            interests = self.client._request_margin_api('get', 'margin/interestHistory', signed=True, data=params)
+
+            for interest in interests['rows']:
+                self.db.add_margin_interest(margin_type=margin_type,
+                                            interest_time=interest['interestAccuredTime'],
+                                            asset=interest['asset'],
+                                            interest=interest['interest'],
+                                            interest_type=interest['type'],
+                                            auto_commit=False)
+
+            if len(interests['rows']):
+                current += 1  # next page
+                self.db.commit()
+            elif archived:  # switching to non archived interests
+                current = 1
+                archived = False
+                latest_time = self.db.get_last_margin_interest_time(margin_type)
+            else:
+                break
+
+    def update_cross_margin_repays(self):
+        """
+        update the repays for all cross margin assets
+
+        :return: None
+        :rtype: None
+        """
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        assets = set()
+        for symbol_info in symbols_info:
+            assets.add(symbol_info['base'])
+            assets.add(symbol_info['quote'])
+
+        pbar = tqdm(total=len(assets))
+        for asset in assets:
+            pbar.set_description(f"fetching {asset} cross margin repays")
+            self.update_margin_asset_repay(asset=asset)
+            pbar.update()
+        pbar.close()
+
+    def update_margin_asset_repay(self, asset: str, isolated_symbol=''):
+        """
+        update the repays database for a specified asset.
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-repay-record-user_data
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_margin_repay_details
+
+        :param asset: asset for the repays
+        :type asset: str
+        :param isolated_symbol: the symbol must be specified of isolated margin, otherwise cross margin data is returned
+        :type isolated_symbol: str
+        :return: None
+        :rtype: None
+        """
+        margin_type = 'cross' if isolated_symbol == '' else 'isolated'
+        latest_time = self.db.get_last_repay_time(asset=asset, margin_type=margin_type)
+        archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
+        current = 1
+        while True:
+            repays = self.client.get_margin_repay_details(asset=asset,
+                                                          current=current,
+                                                          startTime=latest_time + 1000,
+                                                          archived=archived,
+                                                          isolatedSymbol=isolated_symbol,
+                                                          size=100)
+            for repay in repays['rows']:
+                if repay['status'] == 'CONFIRMED':
+                    self.db.add_repay(margin_type=margin_type,
+                                      tx_id=repay['txId'],
+                                      repay_time=repay['timestamp'],
+                                      asset=repay['asset'],
+                                      principal=repay['principal'],
+                                      interest=repay['interest'],
+                                      auto_commit=False)
+
+            if len(repays['rows']):
+                current += 1  # next page
+                self.db.commit()
+            elif archived:  # switching to non archived repays
+                current = 1
+                archived = False
+                latest_time = self.db.get_last_repay_time(asset=asset, margin_type=margin_type)
+            else:
+                break
+
+    def update_cross_margin_loans(self):
+        """
+        update the loans for all cross margin assets
+
+        :return: None
+        :rtype: None
+        """
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        assets = set()
+        for symbol_info in symbols_info:
+            assets.add(symbol_info['base'])
+            assets.add(symbol_info['quote'])
+
+        pbar = tqdm(total=len(assets))
+        for asset in assets:
+            pbar.set_description(f"fetching {asset} cross margin loans")
+            self.update_margin_asset_loans(asset=asset)
+            pbar.update()
+        pbar.close()
+
+    def update_margin_asset_loans(self, asset: str, isolated_symbol=''):
+        """
+        update the loans database for a specified asset.
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-loan-record-user_data
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_margin_loan_details
+
+        :param asset: asset for the loans
+        :type asset: str
+        :param isolated_symbol: the symbol must be specified of isolated margin, otherwise cross margin data is returned
+        :type isolated_symbol: str
+        :return: None
+        :rtype: None
+        """
+        margin_type = 'cross' if isolated_symbol == '' else 'isolated'
+        latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+        archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
+        current = 1
+        while True:
+            loans = self.client.get_margin_loan_details(asset=asset,
+                                                        current=current,
+                                                        startTime=latest_time + 1000,
+                                                        archived=archived,
+                                                        isolatedSymbol=isolated_symbol,
+                                                        size=100)
+            for loan in loans['rows']:
+                if loan['status'] == 'CONFIRMED':
+                    self.db.add_loan(margin_type=margin_type,
+                                     tx_id=loan['txId'],
+                                     loan_time=loan['timestamp'],
+                                     asset=loan['asset'],
+                                     principal=loan['principal'],
+                                     auto_commit=False)
+
+            if len(loans['rows']):
+                current += 1  # next page
+                self.db.commit()
+            elif archived:  # switching to non archived loans
+                current = 1
+                archived = False
+                latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+            else:
+                break
+
+    def update_cross_margin_symbol_trades(self, asset: str, ref_asset: str, limit: int = 1000):
+        """
+        This update the cross_margin trades in the database for a single trading pair.
+        It will check the last trade id and will requests the all trades after this trade_id.
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-margin-account-39-s-trade-list-user_data
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_margin_trades
+
+        :param asset: name of the asset in the trading pair (ex 'BTC' for 'BTCUSDT')
+        :type asset: string
+        :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
+        :type ref_asset: string
+        :param limit: max size of each trade requests
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
+        limit = min(1000, limit)
+        symbol = asset + ref_asset
+        last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'cross_margin')
+        while True:
+            new_trades = self.client.get_margin_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            for trade in new_trades:
+                self.db.add_trade(trade_type='cross_margin',
+                                  trade_id=int(trade['id']),
+                                  trade_time=int(trade['time']),
+                                  asset=asset,
+                                  ref_asset=ref_asset,
+                                  qty=float(trade['qty']),
+                                  price=float(trade['price']),
+                                  fee=float(trade['commission']),
+                                  fee_asset=trade['commissionAsset'],
+                                  is_buyer=trade['isBuyer'],
+                                  auto_commit=False
+                                  )
+                last_trade_id = max(last_trade_id, int(trade['id']))
+            if len(new_trades):
+                self.db.commit()
+            if len(new_trades) < limit:
+                break
+
+    def update_all_cross_margin_trades(self, limit: int = 1000):
+        """
+        This update the cross margin trades in the database for every trading pairs
+
+        :param limit: max size of each trade requests
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        pbar = tqdm(total=len(symbols_info))
+        for symbol_info in symbols_info:
+            pbar.set_description(f"fetching {symbol_info['symbol']}")
+            self.update_cross_margin_symbol_trades(asset=symbol_info['base'],
+                                                   ref_asset=symbol_info['quote'],
+                                                   limit=limit)
+            pbar.update()
+        pbar.close()
+
     def update_lending_interests(self):
         """
         update the lending interests database.
-        for each update
+
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_lending_interest_history
+        https://binance-docs.github.io/apidocs/spot/en/#get-interest-history-user_data-2
 
         :return: None
         :rtype: None
@@ -47,7 +285,7 @@ class BinanceManager:
                                                  amount=li['interest']
                                                  )
 
-                if lending_interests:
+                if len(lending_interests):
                     current += 1  # next page
                     self.db.commit()
                 else:
@@ -59,6 +297,10 @@ class BinanceManager:
         """
         update the dust database. As there is no way to get the dust by id or timeframe, the table is cleared
         for each update
+
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_dust_log
+        https://binance-docs.github.io/apidocs/spot/en/#dustlog-user_data
 
         :return: None
         :rtype: None
@@ -85,6 +327,19 @@ class BinanceManager:
         pbar.close()
 
     def update_spot_dividends(self, day_jump: float = 90, limit: int = 500):
+        """
+        update the dividends database (earnings distributed by Binance)
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_asset_dividend_history
+        https://binance-docs.github.io/apidocs/spot/en/#asset-dividend-record-user_data
+
+        :param day_jump: length of the time window in days, max is 90
+        :type day_jump: float
+        :param limit: max number of dividends to retrieve per call, max is 500
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
         limit = min(500, limit)
         delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
         start_time = self.db.get_last_spot_dividend_time() + 1
@@ -128,6 +383,10 @@ class BinanceManager:
         The withdraws are then saved in the database.
         Only successful withdraws are fetched.
 
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_withdraw_history
+        https://binance-docs.github.io/apidocs/spot/en/#withdraw-history-user_data
+
         :param day_jump: length of the time window for each call (max 90)
         :type day_jump: float
         :return: None
@@ -163,6 +422,10 @@ class BinanceManager:
         The deposits are then saved in the database.
         Only successful deposits are fetched.
 
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_deposit_history
+        https://binance-docs.github.io/apidocs/spot/en/#deposit-history-user_data
+
         :param day_jump: length of the time window for each call (max 90)
         :type day_jump: float
         :return: None
@@ -193,6 +456,10 @@ class BinanceManager:
         This update the spot trades in the database for a single trading pair. It will check the last trade id and will
         requests the all trades after this trade_id.
 
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_my_trades
+        https://binance-docs.github.io/apidocs/spot/en/#account-trade-list-user_data
+
         :param asset: name of the asset in the trading pair (ex 'BTC' for 'BTCUSDT')
         :type asset: string
         :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
@@ -204,21 +471,22 @@ class BinanceManager:
         """
         limit = min(1000, limit)
         symbol = asset + ref_asset
-        last_trade_id = self.db.get_max_trade_id(asset, ref_asset)
+        last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'spot')
         while True:
             new_trades = self.client.get_my_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
             for trade in new_trades:
-                self.db.add_spot_trade(trade_id=int(trade['id']),
-                                       millistamp=int(trade['time']),
-                                       asset=asset,
-                                       ref_asset=ref_asset,
-                                       qty=float(trade['qty']),
-                                       price=float(trade['price']),
-                                       fee=float(trade['commission']),
-                                       fee_asset=trade['commissionAsset'],
-                                       is_buyer=trade['isBuyer'],
-                                       auto_commit=False
-                                       )
+                self.db.add_trade(trade_type='spot',
+                                  trade_id=int(trade['id']),
+                                  trade_time=int(trade['time']),
+                                  asset=asset,
+                                  ref_asset=ref_asset,
+                                  qty=float(trade['qty']),
+                                  price=float(trade['price']),
+                                  fee=float(trade['commission']),
+                                  fee_asset=trade['commissionAsset'],
+                                  is_buyer=trade['isBuyer'],
+                                  auto_commit=False
+                                  )
                 last_trade_id = max(last_trade_id, int(trade['id']))
             if len(new_trades):
                 self.db.commit()
@@ -297,6 +565,33 @@ class BinanceManager:
         :rtype: None
         """
         self.db.drop_table(tables.LENDING_INTEREST_TABLE)
+
+    def drop_cross_margin_trade_table(self):
+        """
+        erase the cross margin trades table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.CROSS_MARGIN_TRADE_TABLE)
+
+    def drop_cross_margin_loan_table(self):
+        """
+        erase the cross margin loan table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.CROSS_MARGIN_LOAN_TABLE)
+
+    def drop_cross_margin_repay_table(self):
+        """
+        erase the cross margin repay table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.CROSS_MARGIN_REPAY_TABLE)
 
     def drop_all_tables(self):
         """
