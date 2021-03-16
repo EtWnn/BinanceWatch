@@ -22,6 +22,52 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_universal_transfers(self):
+        """
+        update the universal transfers database.
+
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.query_universal_transfer_history
+        https://binance-docs.github.io/apidocs/spot/en/#query-user-universal-transfer-history
+
+        :return: None
+        :rtype: None
+        """
+        transfers_types = ['MAIN_C2C', 'MAIN_UMFUTURE', 'MAIN_CMFUTURE', 'MAIN_MARGIN', 'MAIN_MINING', 'C2C_MAIN',
+                           'C2C_UMFUTURE', 'C2C_MINING', 'C2C_MARGIN', 'UMFUTURE_MAIN', 'UMFUTURE_C2C',
+                           'UMFUTURE_MARGIN', 'CMFUTURE_MAIN', 'CMFUTURE_MARGIN', 'MARGIN_MAIN', 'MARGIN_UMFUTURE',
+                           'MARGIN_CMFUTURE', 'MARGIN_MINING', 'MARGIN_C2C', 'MINING_MAIN', 'MINING_UMFUTURE',
+                           'MINING_C2C', 'MINING_MARGIN']
+        pbar = tqdm(total=len(transfers_types))
+        for transfer_type in transfers_types:
+            pbar.set_description(f"fetching transfer type {transfer_type}")
+            latest_time = self.db.get_last_universal_transfer(transfer_type=transfer_type) + 1
+            current = 1
+            while True:
+                universal_transfers = self.client.query_universal_transfer_history(type=transfer_type,
+                                                                                   startTime=latest_time,
+                                                                                   current=current,
+                                                                                   size=100)
+                try:
+                    universal_transfers = universal_transfers['rows']
+                except KeyError:
+                    break
+                for transfer in universal_transfers:
+                    self.db.add_universal_transfer(transfer_id=transfer['tranId'],
+                                                   transfer_type=transfer['type'],
+                                                   transfer_time=transfer['timestamp'],
+                                                   asset=transfer['asset'],
+                                                   amount=float(transfer['amount'])
+                                                   )
+
+                if len(universal_transfers):
+                    current += 1  # next page
+                    self.db.commit()
+                else:
+                    break
+            pbar.update()
+        pbar.close()
+
     def update_cross_margin_interests(self):
         """
         update the interests for all cross margin assets
