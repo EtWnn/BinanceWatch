@@ -14,6 +14,95 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
+    def add_universal_transfer(self, transfer_id: int, transfer_type: str, transfer_time: int, asset: str,
+                               amount: float, auto_commit: bool = True):
+        """
+        add a universal transfer to the database
+
+        :param transfer_id: id of the transfer
+        :type transfer_id:  int
+        :param transfer_type: enum of the transfer type (ex: 'MAIN_MARGIN')
+        :type transfer_type: str
+        :param transfer_time: millistamp of the operation
+        :type transfer_time: int
+        :param asset: asset that got transferred
+        :type asset: str
+        :param amount: amount transferred
+        :type amount: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        table = tables.UNIVERSAL_TRANSFER_TABLE
+
+        row = (transfer_id, transfer_type, transfer_time, asset, amount)
+        self.add_row(table, row, auto_commit=auto_commit)
+
+    def get_universal_transfers(self, transfer_type: Optional[str] = None, asset: Optional[str] = None,
+                                start_time: Optional[int] = None, end_time: Optional[int] = None):
+        """
+        return universal transfers stored in the database. Transfer type, Asset type and time filters can be used
+
+        :param transfer_type: enum of the transfer type (ex: 'MAIN_MARGIN')
+        :type transfer_type: Optional[str]
+        :param asset: fetch only interests in this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only interests after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only interests before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        table = tables.UNIVERSAL_TRANSFER_TABLE
+
+        conditions_list = []
+        if transfer_type is not None:
+            conditions_list.append((table.trfType,
+                                    SQLConditionEnum.equal,
+                                    transfer_type))
+        if asset is not None:
+            conditions_list.append((table.asset,
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((table.trfTime,
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((table.trfTime,
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
+
+    def get_last_universal_transfer(self, transfer_type: str):
+        """
+        return the latest time when a universal transfer was made
+        If None, return the millistamp corresponding to 2017/01/01
+
+        :param transfer_type: enum of the transfer type (ex: 'MAIN_MARGIN')
+        :type transfer_type: str
+        :return: millistamp
+        :rtype: int
+        """
+        table = tables.UNIVERSAL_TRANSFER_TABLE
+        conditions_list = [(table.trfType,
+                            SQLConditionEnum.equal,
+                            transfer_type)]
+        selection = f"MAX({table.trfTime})"
+        result = self.get_conditions_rows(table,
+                                          selection=selection,
+                                          conditions_list=conditions_list)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
+
     def add_margin_interest(self, margin_type: str, interest_time: int, asset: str, interest: float,
                             interest_type: str, auto_commit: bool = True):
         """
@@ -73,7 +162,7 @@ class BinanceDataBase(DataBase):
                                     SQLConditionEnum.equal,
                                     asset))
         if start_time is not None:
-            conditions_list.append((table.repayTime,
+            conditions_list.append((table.interestTime,
                                     SQLConditionEnum.greater_equal,
                                     start_time))
         if end_time is not None:
