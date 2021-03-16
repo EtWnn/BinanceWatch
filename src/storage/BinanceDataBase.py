@@ -14,10 +14,115 @@ class BinanceDataBase(DataBase):
     def __init__(self, name: str = 'binance_db'):
         super().__init__(name)
 
+    def add_repay(self, margin_type: str, tx_id: int, repay_time: int, asset: str, principal: float,
+                  interest: float, auto_commit: bool = True):
+        """
+        add a repay to the database
+
+        :param margin_type: either 'cross' or 'isolated'
+        :type margin_type:
+        :param tx_id: binance id for the transaction (uniqueness?)
+        :type tx_id: int
+        :param repay_time: millitstamp of the operation
+        :type repay_time: int
+        :param asset: asset that got repaid
+        :type asset: str
+        :param principal: principal amount repaid for the loan
+        :type principal: float
+        :param interest: amount of interest repaid for the loan
+        :type interest:
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        if margin_type == 'cross':
+            table = tables.CROSS_MARGIN_REPAY_TABLE
+        elif margin_type == 'isolated':
+            raise NotImplementedError
+        else:
+            raise ValueError(f"margin type should be 'cross' or 'isolated' but {margin_type} was received")
+
+        row = (tx_id, repay_time, asset, principal, interest)
+        self.add_row(table, row, auto_commit=auto_commit)
+
+    def get_repays(self, margin_type: str, asset: Optional[str] = None, start_time: Optional[int] = None,
+                   end_time: Optional[int] = None):
+        """
+        return repays stored in the database. Asset type and time filters can be used
+
+        :param margin_type: either 'cross' or 'isolated'
+        :type margin_type:
+        :param asset: fetch only repays of this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only repays after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only repays before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        if margin_type == 'cross':
+            table = tables.CROSS_MARGIN_REPAY_TABLE
+        elif margin_type == 'isolated':
+            raise NotImplementedError
+        else:
+            raise ValueError(f"margin type should be 'cross' or 'isolated' but {margin_type} was received")
+
+        conditions_list = []
+        if asset is not None:
+            conditions_list.append((table.asset,
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((table.repayTime,
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((table.repayTime,
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
+
+    def get_last_repay_time(self, asset: str, margin_type: str):
+        """
+        return the latest time when a repay was made on a defined asset
+        If None, return the millistamp corresponding to 2017/01/01
+
+        :param asset: name of the asset repaid
+        :type asset: str
+        :param margin_type: either 'cross' or 'isolated'
+        :type margin_type:
+        :return: millistamp
+        :rtype: int
+        """
+        if margin_type == 'cross':
+            table = tables.CROSS_MARGIN_REPAY_TABLE
+        elif margin_type == 'isolated':
+            raise NotImplementedError
+        else:
+            raise ValueError(f"margin type should be 'cross' or 'isolated' but {margin_type} was received")
+
+        conditions_list = [(table.asset,
+                            SQLConditionEnum.equal,
+                            asset)]
+        selection = f"MAX({table.repayTime})"
+        result = self.get_conditions_rows(table,
+                                          selection=selection,
+                                          conditions_list=conditions_list)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
+
     def add_loan(self, margin_type: str, tx_id: int, loan_time: int, asset: str, principal: float,
                  auto_commit: bool = True):
         """
-        add an lending interest to the database
+        add a loan to the database
 
         :param margin_type: either 'cross' or 'isolated'
         :type margin_type:

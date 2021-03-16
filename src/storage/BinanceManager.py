@@ -22,6 +22,72 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_cross_margin_repays(self):
+        """
+        update the repays for all cross margin assets
+
+        :return: None
+        :rtype: None
+        """
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        assets = set()
+        for symbol_info in symbols_info:
+            assets.add(symbol_info['base'])
+            assets.add(symbol_info['quote'])
+
+        pbar = tqdm(total=len(assets))
+        for asset in assets:
+            pbar.set_description(f"fetching {asset} cross margin repays")
+            self.update_margin_asset_repay(asset=asset)
+            pbar.update()
+        pbar.close()
+
+    def update_margin_asset_repay(self, asset: str, isolated_symbol=''):
+        """
+        update the repays database for a specified asset.
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-repay-record-user_data
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_margin_repay_details
+
+        :param asset: asset for the repays
+        :type asset: str
+        :param isolated_symbol: the symbol must be specified of isolated margin, otherwise cross margin data is returned
+        :type isolated_symbol: str
+        :return: None
+        :rtype: None
+        """
+        margin_type = 'cross' if isolated_symbol == '' else 'isolated'
+        latest_time = self.db.get_last_repay_time(asset=asset, margin_type=margin_type)
+        archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
+        current = 1
+        while True:
+            repays = self.client.get_margin_repay_details(asset=asset,
+                                                          current=current,
+                                                          startTime=latest_time + 1000,
+                                                          archived=archived,
+                                                          isolatedSymbol=isolated_symbol,
+                                                          size=100)
+            for repay in repays['rows']:
+                if repay['status'] == 'CONFIRMED':
+                    self.db.add_repay(margin_type=margin_type,
+                                      tx_id=repay['txId'],
+                                      repay_time=repay['timestamp'],
+                                      asset=repay['asset'],
+                                      principal=repay['principal'],
+                                      interest=repay['interest'],
+                                      auto_commit=False)
+
+            if len(repays['rows']):
+                current += 1  # next page
+                self.db.commit()
+            elif archived:  # switching to non archived loans
+                current = 1
+                archived = False
+                latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+            else:
+                break
+
     def update_cross_margin_loans(self):
         """
         update the loans for all cross margin assets
@@ -475,6 +541,15 @@ class BinanceManager:
         :rtype: None
         """
         self.db.drop_table(tables.CROSS_MARGIN_LOAN_TABLE)
+
+    def drop_cross_margin_repay_table(self):
+        """
+        erase the cross margin repay table
+
+        :return: None
+        :rtype: None
+        """
+        self.db.drop_table(tables.CROSS_MARGIN_REPAY_TABLE)
 
     def drop_all_tables(self):
         """

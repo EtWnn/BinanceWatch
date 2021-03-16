@@ -185,3 +185,22 @@ CROSS_MARGIN_LOAN_TABLE = Table(
     primary_key_sql_type='INTEGER'
 
 )
+
+CROSS_MARGIN_REPAY_TABLE = Table(
+    "cross_margin_repay_table",
+    [
+        'repayTime',
+        'asset',
+        'principal',
+        'interest',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
