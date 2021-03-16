@@ -23,7 +23,13 @@ class BinanceManager:
         self.client = Client(**credentials)
 
     def update_cross_margin_loans(self):
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # no end point yet
+        """
+        update the loans for all cross margin assets
+
+        :return: None
+        :rtype: None
+        """
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
         assets = set()
         for symbol_info in symbols_info:
             assets.add(symbol_info['base'])
@@ -39,6 +45,10 @@ class BinanceManager:
     def update_margin_asset_loans(self, asset: str, isolated_symbol=''):
         """
         update the loans database for a specified asset.
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-loan-record-user_data
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_margin_loan_details
 
         :param asset: asset for the loans
         :type asset: str
@@ -82,6 +92,10 @@ class BinanceManager:
         This update the cross_margin trades in the database for a single trading pair.
         It will check the last trade id and will requests the all trades after this trade_id.
 
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-margin-account-39-s-trade-list-user_data
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_margin_trades
+
         :param asset: name of the asset in the trading pair (ex 'BTC' for 'BTCUSDT')
         :type asset: string
         :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
@@ -124,7 +138,7 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # no end point yet
+        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
             pbar.set_description(f"fetching {symbol_info['symbol']}")
@@ -137,6 +151,10 @@ class BinanceManager:
     def update_lending_interests(self):
         """
         update the lending interests database.
+
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_lending_interest_history
+        https://binance-docs.github.io/apidocs/spot/en/#get-interest-history-user_data-2
 
         :return: None
         :rtype: None
@@ -172,6 +190,10 @@ class BinanceManager:
         update the dust database. As there is no way to get the dust by id or timeframe, the table is cleared
         for each update
 
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_dust_log
+        https://binance-docs.github.io/apidocs/spot/en/#dustlog-user_data
+
         :return: None
         :rtype: None
         """
@@ -197,6 +219,19 @@ class BinanceManager:
         pbar.close()
 
     def update_spot_dividends(self, day_jump: float = 90, limit: int = 500):
+        """
+        update the dividends database (earnings distributed by Binance)
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_asset_dividend_history
+        https://binance-docs.github.io/apidocs/spot/en/#asset-dividend-record-user_data
+
+        :param day_jump: length of the time window in days, max is 90
+        :type day_jump: float
+        :param limit: max number of dividends to retrieve per call, max is 500
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
         limit = min(500, limit)
         delta_jump = min(day_jump, 90) * 24 * 3600 * 1000
         start_time = self.db.get_last_spot_dividend_time() + 1
@@ -240,6 +275,10 @@ class BinanceManager:
         The withdraws are then saved in the database.
         Only successful withdraws are fetched.
 
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_withdraw_history
+        https://binance-docs.github.io/apidocs/spot/en/#withdraw-history-user_data
+
         :param day_jump: length of the time window for each call (max 90)
         :type day_jump: float
         :return: None
@@ -275,6 +314,10 @@ class BinanceManager:
         The deposits are then saved in the database.
         Only successful deposits are fetched.
 
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_deposit_history
+        https://binance-docs.github.io/apidocs/spot/en/#deposit-history-user_data
+
         :param day_jump: length of the time window for each call (max 90)
         :type day_jump: float
         :return: None
@@ -304,6 +347,10 @@ class BinanceManager:
         """
         This update the spot trades in the database for a single trading pair. It will check the last trade id and will
         requests the all trades after this trade_id.
+
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_my_trades
+        https://binance-docs.github.io/apidocs/spot/en/#account-trade-list-user_data
 
         :param asset: name of the asset in the trading pair (ex 'BTC' for 'BTCUSDT')
         :type asset: string
