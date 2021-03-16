@@ -204,3 +204,19 @@ CROSS_MARGIN_REPAY_TABLE = Table(
     primary_key_sql_type='INTEGER'
 
 )
+
+CROSS_MARGIN_INTEREST_TABLE = Table(
+    "cross_margin_interest_table",
+    [
+        'interestTime',
+        'asset',
+        'interest',
+        'interestType'
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'REAL',
+        'TEXT'
+    ]
+)

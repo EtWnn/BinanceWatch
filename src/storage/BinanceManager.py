@@ -22,6 +22,48 @@ class BinanceManager:
         credentials = CredentialManager.get_api_credentials("Binance")
         self.client = Client(**credentials)
 
+    def update_cross_margin_interests(self):
+        """
+        update the interests for all cross margin assets
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#query-repay-record-user_data
+
+        :return:
+        :rtype:
+        """
+        margin_type = 'cross'
+        latest_time = self.db.get_last_margin_interest_time(margin_type)
+        archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
+        current = 1
+        while True:
+            params = {
+                'current': current,
+                'startTime': latest_time + 1000,
+                'size': 100,
+                'archived': archived
+            }
+            # no built-in method yet in python-binance for margin/interestHistory
+            interests = self.client._request_margin_api('get', 'margin/interestHistory', signed=True, data=params)
+
+            for interest in interests['rows']:
+                self.db.add_margin_interest(margin_type=margin_type,
+                                            interest_time=interest['interestAccuredTime'],
+                                            asset=interest['asset'],
+                                            interest=interest['interest'],
+                                            interest_type=interest['type'],
+                                            auto_commit=False)
+
+            if len(interests['rows']):
+                current += 1  # next page
+                self.db.commit()
+            elif archived:  # switching to non archived interests
+                current = 1
+                archived = False
+                latest_time = self.db.get_last_margin_interest_time(margin_type)
+            else:
+                break
+
     def update_cross_margin_repays(self):
         """
         update the repays for all cross margin assets
@@ -81,10 +123,10 @@ class BinanceManager:
             if len(repays['rows']):
                 current += 1  # next page
                 self.db.commit()
-            elif archived:  # switching to non archived loans
+            elif archived:  # switching to non archived repays
                 current = 1
                 archived = False
-                latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+                latest_time = self.db.get_last_repay_time(asset=asset, margin_type=margin_type)
             else:
                 break
 
