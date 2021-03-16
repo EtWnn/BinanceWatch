@@ -220,3 +220,21 @@ CROSS_MARGIN_INTEREST_TABLE = Table(
         'TEXT'
     ]
 )
+
+UNIVERSAL_TRANSFER_TABLE = Table(
+    "universal_transfer_table",
+    [
+        'trfType',
+        'trfTime',
+        'asset',
+        'amount'
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'REAL'
+    ],
+    primary_key='tranId',
+    primary_key_sql_type='INTEGER'
+)
