@@ -1,11 +1,10 @@
-import sys
-import os
 from enum import Enum
 from typing import List, Tuple, Optional, Any, Union
 import sqlite3
 
 from src.storage.tables import Table
 from src.utils.LoggerGenerator import LoggerGenerator
+from src.utils.paths import get_data_path
 
 
 class SQLConditionEnum(Enum):
@@ -28,7 +27,7 @@ class DataBase:
     def __init__(self, name: str):
         self.name = name
         self.logger = LoggerGenerator.get_logger(self.name)
-        self.save_path = f"data/{name}.db"
+        self.save_path = get_data_path() / f"{name}.db"
         self.db_conn = sqlite3.connect(self.save_path)
         self.db_cursor = self.db_conn.cursor()
 
