@@ -6,9 +6,9 @@ import dateparser
 from binance.client import Client
 from tqdm import tqdm
 
-from src.utils.time_utils import datetime_to_millistamp
-from src.storage.BinanceDataBase import BinanceDataBase
-from src.storage import tables
+from BinanceWatch.utils.time_utils import datetime_to_millistamp
+from BinanceWatch.storage.BinanceDataBase import BinanceDataBase
+from BinanceWatch.storage import tables
 
 
 class BinanceManager:
