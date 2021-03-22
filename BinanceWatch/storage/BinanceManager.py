@@ -335,7 +335,7 @@ class BinanceManager:
         symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
-            pbar.set_description(f"fetching {symbol_info['symbol']}")
+            pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
             self.update_cross_margin_symbol_trades(asset=symbol_info['base'],
                                                    ref_asset=symbol_info['quote'],
                                                    limit=limit)
@@ -396,7 +396,7 @@ class BinanceManager:
         result = self.client.get_dust_log()
         dusts = result['results']
         pbar = tqdm(total=dusts['total'])
-        pbar.set_description("fetching dusts")
+        pbar.set_description("fetching spot dusts")
         for d in dusts['rows']:
             for sub_dust in d['logs']:
                 date_time = dateparser.parse(sub_dust['operateTime'] + 'Z')
@@ -591,7 +591,7 @@ class BinanceManager:
         symbols_info = self.client.get_exchange_info()['symbols']
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
-            pbar.set_description(f"fetching {symbol_info['symbol']}")
+            pbar.set_description(f"fetching {symbol_info['symbol']} spot trades")
             self.update_spot_symbol_trades(asset=symbol_info['baseAsset'],
                                            ref_asset=symbol_info['quoteAsset'],
                                            limit=limit)
