@@ -20,6 +20,44 @@ class BinanceManager:
         self.db = BinanceDataBase()
         self.client = Client(api_key=api_key, api_secret=api_secret)
 
+    def update_spot(self):
+        """
+        call all update methods related to the spot account
+
+        :return: None
+        :rtype: None
+        """
+        self.update_all_spot_trades()
+        self.update_spot_deposits()
+        self.update_spot_withdraws()
+        self.update_spot_dusts()
+        self.update_spot_dividends()
+        self.update_universal_transfers()
+
+    def update_cross_margin(self):
+        """
+        call all update methods related to cross margin spot account
+
+        :return: None
+        :rtype: None
+        """
+        self.update_all_cross_margin_trades()
+        self.update_cross_margin_loans()
+        self.update_cross_margin_interests()
+        self.update_cross_margin_repays()
+        self.update_universal_transfers()
+
+    def update_lending(self):
+        """
+        call all update methods related to lending activities
+
+        :return: None
+        :rtype: None
+        """
+        self.update_lending_interests()
+        # TODO add update lending purchase
+        # TODO add update lending redemption
+
     def update_universal_transfers(self):
         """
         update the universal transfers database.
