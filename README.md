@@ -1,9 +1,9 @@
 # Welcome to BinanceWatch v0.1
 
----
+
 ## Note
 
----
+
 This library is under development by EtWnn, but feel free to drop your suggestions or remarks in
 the discussion tab of this repo. You are also welcome to contribute by submitting PRs.
 
@@ -15,7 +15,7 @@ your own risk.
 
 ## Features
 
----
+
 If you used quite intensively Binance, it can take some time to retrieve everything that happened
 on your account. This library is made to save locally the events of your account so that you don't
 need to fetch your history from the beginning every time.
@@ -39,7 +39,7 @@ It currently supports:
 
 ## Quick Tour
 
----
+
 [Generate an API Key](https://www.binance.com/en/my/settings/api-management) in your binance account. Only read
 permissions are needed.
 
@@ -72,7 +72,7 @@ spot_trades = bm.db.get_trades('spot', start_time=start_time)
 
 ## Donation
 
----
+
 If this library has helped you in any way, feel free to donate:
 - **BTC**: 14ou4fMYoMVYbWEKnhADPJUNVytWQWx9HG
 - **ETH**: 0xfb0ebcf8224ce561bfb06a56c3b9a43e1a4d1be2
@@ -82,7 +82,7 @@ If this library has helped you in any way, feel free to donate:
 
 ## Known Issues:
 
----
+
 Some endpoints are not yet provided by Binance, so they can't be implemented in this library:
 - Fiat withdraws and deposits
 - Locked stacking interests
