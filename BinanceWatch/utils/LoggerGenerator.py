@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional
 
-from src.utils.paths import get_data_path
+from BinanceWatch.utils.paths import get_data_path
 
 
 class LoggerGenerator:

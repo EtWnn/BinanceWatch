@@ -2,9 +2,9 @@ from enum import Enum
 from typing import List, Tuple, Optional, Any, Union
 import sqlite3
 
-from src.storage.tables import Table
-from src.utils.LoggerGenerator import LoggerGenerator
-from src.utils.paths import get_data_path
+from BinanceWatch.storage.tables import Table
+from BinanceWatch.utils.LoggerGenerator import LoggerGenerator
+from BinanceWatch.utils.paths import get_data_path
 
 
 class SQLConditionEnum(Enum):

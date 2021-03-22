@@ -1,9 +1,9 @@
 import datetime
 from typing import Optional
 
-from src.storage.DataBase import DataBase, SQLConditionEnum
-from src.storage import tables
-from src.utils.time_utils import datetime_to_millistamp
+from BinanceWatch.storage.DataBase import DataBase, SQLConditionEnum
+from BinanceWatch.storage import tables
+from BinanceWatch.utils.time_utils import datetime_to_millistamp
 
 
 class BinanceDataBase(DataBase):

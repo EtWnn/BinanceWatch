@@ -1,5 +1,5 @@
-from src.storage.DataBase import DataBase, SQLConditionEnum
-from src.storage.tables import Table
+from BinanceWatch.storage.DataBase import DataBase, SQLConditionEnum
+from BinanceWatch.storage.tables import Table
 
 db = DataBase("test_table")
 
