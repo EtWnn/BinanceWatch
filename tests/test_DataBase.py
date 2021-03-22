@@ -1,5 +1,3 @@
-from pandas import DataFrame
-
 from src.storage.DataBase import DataBase, SQLConditionEnum
 from src.storage.tables import Table
 
