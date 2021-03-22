@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from src.utils.time_utils import datetime_to_millistamp
 from src.storage.BinanceDataBase import BinanceDataBase
-from src.utils.credentials import CredentialManager
 from src.storage import tables
 
 
@@ -17,10 +16,9 @@ class BinanceManager:
     This class is in charge of filling the database by calling the binance API
     """
 
-    def __init__(self):
+    def __init__(self, api_key: str, api_secret: str):
         self.db = BinanceDataBase()
-        credentials = CredentialManager.get_api_credentials("Binance")
-        self.client = Client(**credentials)
+        self.client = Client(api_key=api_key, api_secret=api_secret)
 
     def update_universal_transfers(self):
         """
