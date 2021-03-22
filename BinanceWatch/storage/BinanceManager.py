@@ -20,6 +20,44 @@ class BinanceManager:
         self.db = BinanceDataBase()
         self.client = Client(api_key=api_key, api_secret=api_secret)
 
+    def update_spot(self):
+        """
+        call all update methods related to the spot account
+
+        :return: None
+        :rtype: None
+        """
+        self.update_all_spot_trades()
+        self.update_spot_deposits()
+        self.update_spot_withdraws()
+        self.update_spot_dusts()
+        self.update_spot_dividends()
+        self.update_universal_transfers()
+
+    def update_cross_margin(self):
+        """
+        call all update methods related to cross margin spot account
+
+        :return: None
+        :rtype: None
+        """
+        self.update_all_cross_margin_trades()
+        self.update_cross_margin_loans()
+        self.update_cross_margin_interests()
+        self.update_cross_margin_repays()
+        self.update_universal_transfers()
+
+    def update_lending(self):
+        """
+        call all update methods related to lending activities
+
+        :return: None
+        :rtype: None
+        """
+        self.update_lending_interests()
+        # TODO add update lending purchase
+        # TODO add update lending redemption
+
     def update_universal_transfers(self):
         """
         update the universal transfers database.
@@ -80,6 +118,8 @@ class BinanceManager:
         latest_time = self.db.get_last_margin_interest_time(margin_type)
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
+        pbar = tqdm()
+        pbar.set_description("fetching cross margin interests")
         while True:
             params = {
                 'current': current,
@@ -107,6 +147,8 @@ class BinanceManager:
                 latest_time = self.db.get_last_margin_interest_time(margin_type)
             else:
                 break
+            pbar.update()
+        pbar.close()
 
     def update_cross_margin_repays(self):
         """
@@ -293,7 +335,7 @@ class BinanceManager:
         symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
-            pbar.set_description(f"fetching {symbol_info['symbol']}")
+            pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
             self.update_cross_margin_symbol_trades(asset=symbol_info['base'],
                                                    ref_asset=symbol_info['quote'],
                                                    limit=limit)
@@ -354,7 +396,7 @@ class BinanceManager:
         result = self.client.get_dust_log()
         dusts = result['results']
         pbar = tqdm(total=dusts['total'])
-        pbar.set_description("fetching dusts")
+        pbar.set_description("fetching spot dusts")
         for d in dusts['rows']:
             for sub_dust in d['logs']:
                 date_time = dateparser.parse(sub_dust['operateTime'] + 'Z')
@@ -549,7 +591,7 @@ class BinanceManager:
         symbols_info = self.client.get_exchange_info()['symbols']
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
-            pbar.set_description(f"fetching {symbol_info['symbol']}")
+            pbar.set_description(f"fetching {symbol_info['symbol']} spot trades")
             self.update_spot_symbol_trades(asset=symbol_info['baseAsset'],
                                            ref_asset=symbol_info['quoteAsset'],
                                            limit=limit)
