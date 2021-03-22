@@ -57,7 +57,7 @@ bm = BinanceManager(api_key, api_secret)
 bm.update_all_spot_trades()
 ```
 ```
-Out -> fetching spot deposits: 100%|██████████████████████████████| 18/18 [00:08<00:00,  2.24it/s]
+Out -> fetching BIFIBUSD: 100%|██████████████████████| 1349/1349 [06:24<00:00,  3.51it/s]
 ```
 ```python
 from datetime import datetime
