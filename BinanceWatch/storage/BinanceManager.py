@@ -118,6 +118,8 @@ class BinanceManager:
         latest_time = self.db.get_last_margin_interest_time(margin_type)
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
+        pbar = tqdm()
+        pbar.set_description("fetching cross margin interests")
         while True:
             params = {
                 'current': current,
@@ -145,6 +147,8 @@ class BinanceManager:
                 latest_time = self.db.get_last_margin_interest_time(margin_type)
             else:
                 break
+            pbar.update()
+        pbar.close()
 
     def update_cross_margin_repays(self):
         """
