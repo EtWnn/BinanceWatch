@@ -125,15 +125,42 @@ class DataBase:
         self.db_cursor.execute(create_cmd)
         self.db_conn.commit()
 
-    def drop_table(self, table: Table):
+    def drop_table(self, table: Union[Table, str]):
         """
-        delete a table from the database
-        :param table: Table instance with the config of the table to drop
-        :return:
+         delete a table from the database
+
+        :param table: table or table name to drop
+        :type table: str or Table instance
+        :return: None
+        :rtype: None
         """
-        execution_order = f"DROP TABLE IF EXISTS {table.name}"
+        if isinstance(table, Table):
+            table = table.name
+        execution_order = f"DROP TABLE IF EXISTS {table}"
         self.db_cursor.execute(execution_order)
         self.db_conn.commit()
+
+    def drop_all_tables(self):
+        """
+        drop all the tables existing in the database
+
+        :return: None
+        :rtype: None
+        """
+        tables_desc = self.get_all_tables()
+        for table_desc in tables_desc:
+            self.drop_table(table_desc[1])
+        self.commit()
+
+    def get_all_tables(self) -> List[Tuple]:
+        """
+        return all the tables existing in the database
+
+        :return: tables descriptions
+        :rtype: List[Tuple]
+        """
+        cmd = "SELECT * FROM sqlite_master WHERE type='table';"
+        return self._fetch_rows(cmd)
 
     def commit(self):
         """

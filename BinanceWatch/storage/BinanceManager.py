@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from BinanceWatch.utils.time_utils import datetime_to_millistamp
 from BinanceWatch.storage.BinanceDataBase import BinanceDataBase
-from BinanceWatch.storage import tables
 
 
 class BinanceManager:
@@ -675,95 +674,3 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def drop_spot_trade_table(self):
-        """
-        erase the spot trades table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.SPOT_TRADE_TABLE)
-
-    def drop_spot_deposit_table(self):
-        """
-        erase the spot deposits table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.SPOT_DEPOSIT_TABLE)
-
-    def drop_spot_withdraw_table(self):
-        """
-        erase the spot withdraws table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.SPOT_WITHDRAW_TABLE)
-
-    def drop_spot_dividends_table(self):
-        """
-        erase the spot dividends table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.SPOT_DIVIDEND_TABLE)
-
-    def drop_dust_table(self):
-        """
-        erase the spot dust table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.SPOT_DUST_TABLE)
-
-    def drop_lending_interest_table(self):
-        """
-        erase the lending interests
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.LENDING_INTEREST_TABLE)
-
-    def drop_cross_margin_trade_table(self):
-        """
-        erase the cross margin trades table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.CROSS_MARGIN_TRADE_TABLE)
-
-    def drop_cross_margin_loan_table(self):
-        """
-        erase the cross margin loan table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.CROSS_MARGIN_LOAN_TABLE)
-
-    def drop_cross_margin_repay_table(self):
-        """
-        erase the cross margin repay table
-
-        :return: None
-        :rtype: None
-        """
-        self.db.drop_table(tables.CROSS_MARGIN_REPAY_TABLE)
-
-    def drop_all_tables(self):
-        """
-        erase all the tables of the database by calling all the methods having 'drop' and 'table' in their names
-
-        :return: None
-        :rtype: None
-        """
-        methods = [m for m in dir(self) if 'drop' in m and 'table' in m and callable(getattr(self, m))]
-        for m in methods:
-            if m != "drop_all_tables":
-                getattr(self, m)()
