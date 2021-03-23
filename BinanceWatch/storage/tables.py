@@ -146,15 +146,15 @@ LENDING_PURCHASE_TABLE = Table(
     'lending_purchase_history',
     [
         'purchaseTime',
+        'lendingType',
         'asset',
-        'amount',
-        'lendingType'
+        'amount'
     ],
     [
         'INTEGER',
         'TEXT',
-        'INTEGER',
-        'TEXT'
+        'TEXT',
+        'INTEGER'
     ],
     primary_key='purchaseId',
     primary_key_sql_type='INTEGER'
