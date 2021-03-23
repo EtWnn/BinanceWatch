@@ -1,11 +1,11 @@
-# Welcome to BinanceWatch v0.1
+# Welcome to BinanceWatch v0.1.0
 
 
 ## Note
 
 
-This library is under development by EtWnn, but feel free to drop your suggestions or remarks in
-the discussion tab of this repo. You are also welcome to contribute by submitting PRs.
+This library is under development by EtWnn, feel free to drop your suggestions or remarks in
+the discussion tab of the git repo. You are also welcome to contribute by submitting PRs.
 
 This is an unofficial tracker for binance accounts. I am in no way affiliated with Binance, use at
 your own risk.
@@ -49,6 +49,9 @@ It currently supports:
 [Generate an API Key](https://www.binance.com/en/my/settings/api-management) in your binance account. Only read
 permissions are needed.
 
+Install this library with pip:
+`pip install BinanceWatch`
+
 ```python
 from BinanceWatch.BinanceManager import BinanceManager
 
@@ -72,6 +75,16 @@ start_time = datetime_to_millistamp(datetime(2018,1,1))
 
 # get the locally saved spot trades made after 2018/01/01
 spot_trades = bm.db.get_trades('spot', start_time=start_time)
+```
+
+You can also call update functions at an account-type level, and it will call every update
+methods related to this account-type:
+```python
+bm.update_spot()  # (trades, transfers, deposits ...)
+
+bm.update_cross_margin()  # (trades, loans, repays, interests...)
+
+bm.update_lending()  # (purchases, interests, redemptions..)
 ```
 
 ## Donation
