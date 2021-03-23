@@ -160,6 +160,22 @@ LENDING_PURCHASE_TABLE = Table(
     primary_key_sql_type='INTEGER'
 )
 
+LENDING_REDEMPTION_TABLE = Table(
+    'lending_redemption_history',
+    [
+        'redemptionTime',
+        'lendingType',
+        'asset',
+        'amount'
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'INTEGER'
+    ]
+)
+
 CROSS_MARGIN_TRADE_TABLE = Table(
     'cross_margin_trade',
     [
