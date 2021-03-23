@@ -1,4 +1,4 @@
-# Welcome to BinanceWatch v0.1
+# Welcome to BinanceWatch v0.1.0
 
 
 ## Note
