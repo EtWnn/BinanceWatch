@@ -142,6 +142,24 @@ LENDING_INTEREST_TABLE = Table(
     ]
 )
 
+LENDING_PURCHASE_TABLE = Table(
+    'lending_purchase_history',
+    [
+        'purchaseTime',
+        'asset',
+        'amount',
+        'lendingType'
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'INTEGER',
+        'TEXT'
+    ],
+    primary_key='purchaseId',
+    primary_key_sql_type='INTEGER'
+)
+
 CROSS_MARGIN_TRADE_TABLE = Table(
     'cross_margin_trade',
     [
