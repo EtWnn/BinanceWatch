@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from BinanceWatch.utils.time_utils import datetime_to_millistamp
 from BinanceWatch.storage.BinanceDataBase import BinanceDataBase
-from BinanceWatch.storage import tables
 
 
 class BinanceManager:
