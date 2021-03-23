@@ -55,8 +55,8 @@ class BinanceManager:
         :rtype: None
         """
         self.update_lending_interests()
-        # TODO add update lending purchase
-        # TODO add update lending redemption
+        self.update_lending_purchases()
+        self.update_lending_redemptions()
 
     def update_universal_transfers(self):
         """
@@ -339,6 +339,44 @@ class BinanceManager:
             self.update_cross_margin_symbol_trades(asset=symbol_info['base'],
                                                    ref_asset=symbol_info['quote'],
                                                    limit=limit)
+            pbar.update()
+        pbar.close()
+
+    def update_lending_redemptions(self):
+        """
+        update the lending redemptions database.
+
+        sources:
+        https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.get_lending_redemption_history
+        https://binance-docs.github.io/apidocs/spot/en/#get-redemption-record-user_data
+
+        :return: None
+        :rtype: None
+        """
+        lending_types = ['DAILY', 'ACTIVITY', 'CUSTOMIZED_FIXED']
+        pbar = tqdm(total=3)
+        for lending_type in lending_types:
+            pbar.set_description(f"fetching lending redemptions of type {lending_type}")
+            latest_time = self.db.get_last_lending_redemption_time(lending_type=lending_type) + 1
+            current = 1
+            while True:
+                lending_redemptions = self.client.get_lending_redemption_history(lendingType=lending_type,
+                                                                                 startTime=latest_time,
+                                                                                 current=current,
+                                                                                 size=100)
+                for li in lending_redemptions:
+                    if li['status'] == 'PAID':
+                        self.db.add_lending_redemption(redemption_time=li['createTime'],
+                                                       lending_type=lending_type,
+                                                       asset=li['asset'],
+                                                       amount=li['amount']
+                                                       )
+
+                if len(lending_redemptions):
+                    current += 1  # next page
+                    self.db.commit()
+                else:
+                    break
             pbar.update()
         pbar.close()
 
