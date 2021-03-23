@@ -27,10 +27,16 @@ It currently supports:
 - Spot Crypto Deposits
 - Spot Crypto Withdraws
 - Spot Dividends
-- Spot Interests
 - Spot Dusts
 - Universal Transfers
+
+
+
+- Lending Purchases
+- Lending Interests
+- Lending Redemptions
   
+
 
 - Cross Margin Trades
 - Cross Margin Repayment

@@ -10,7 +10,7 @@ setup(
     license='MIT',
     description='Local tracker of a binance account',
     install_requires=['numpy', 'tqdm', 'dateparser', 'requests', 'python-binance', 'appdirs'],
-    keywords='binance exchange wallet save tracking bitcoin ethereum btc eth neo',
+    keywords='binance exchange wallet save tracking history bitcoin ethereum btc eth',
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
