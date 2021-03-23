@@ -141,8 +141,6 @@ dmypy.json
 # except README
 !**/README.md
 
-# except credentials example
-!data/credentials.json.example
 
 # except gitkeep
 !**/.gitkeep
