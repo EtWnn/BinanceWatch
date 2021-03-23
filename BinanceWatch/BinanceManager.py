@@ -7,6 +7,7 @@ import dateparser
 from binance.client import Client
 from tqdm import tqdm
 
+from BinanceWatch.storage import tables
 from BinanceWatch.utils.time_utils import datetime_to_millistamp
 from BinanceWatch.storage.BinanceDataBase import BinanceDataBase
 
@@ -474,7 +475,7 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        self.drop_dust_table()
+        self.db.drop_table(tables.SPOT_DUST_TABLE)
 
         result = self.client.get_dust_log()
         dusts = result['results']
