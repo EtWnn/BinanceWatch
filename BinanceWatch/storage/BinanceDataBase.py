@@ -416,6 +416,92 @@ class BinanceDataBase(DataBase):
             return default
         return result
 
+    def add_lending_redemption(self, redemption_time: int, lending_type: str, asset: str, amount: float,
+                               auto_commit: bool = True):
+        """
+        add a lending redemption to the database
+
+        :param redemption_time: millitstamp of the operation
+        :type redemption_time: int
+        :param lending_type: either 'DAILY', 'ACTIVITY' or 'CUSTOMIZED_FIXED'
+        :type lending_type: str
+        :param asset: asset lent
+        :type asset: str
+        :param amount: amount of asset redeemed
+        :type amount: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        row = (redemption_time, lending_type, asset, amount)
+        self.add_row(tables.LENDING_REDEMPTION_TABLE, row, auto_commit=auto_commit)
+
+    def get_lending_redemptions(self, lending_type: Optional[str] = None, asset: Optional[str] = None,
+                                start_time: Optional[int] = None, end_time: Optional[int] = None):
+        """
+        return lending redemptions stored in the database. Asset type and time filters can be used
+
+        :param lending_type:fetch only redemptions from this lending type
+        :type lending_type: Optional[str]
+        :param asset: fetch only redemptions from this asset
+        :type asset: Optional[str]
+        :param start_time: fetch only redemptions after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only redemptions before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+        """
+        conditions_list = []
+        table = tables.LENDING_REDEMPTION_TABLE
+        if lending_type is not None:
+            conditions_list.append((table.lendingType,
+                                    SQLConditionEnum.equal,
+                                    lending_type))
+        if asset is not None:
+            conditions_list.append((table.asset,
+                                    SQLConditionEnum.equal,
+                                    asset))
+        if start_time is not None:
+            conditions_list.append((table.redemptionTime,
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((table.redemptionTime,
+                                    SQLConditionEnum.lower,
+                                    end_time))
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
+
+    def get_last_lending_redemption_time(self, lending_type: Optional[str] = None):
+        """
+        return the latest time when an lending redemption was made.
+        If None, return the millistamp corresponding to 2017/01/01
+
+        :param lending_type: type of lending
+        :type lending_type: str
+        :return: millistamp
+        :rtype: int
+        """
+        conditions_list = []
+        table = tables.LENDING_REDEMPTION_TABLE
+        if lending_type is not None:
+            conditions_list.append((table.lendingType,
+                                    SQLConditionEnum.equal,
+                                    lending_type))
+        selection = f"MAX({table.redemptionTime})"
+        result = self.get_conditions_rows(table,
+                                          selection=selection,
+                                          conditions_list=conditions_list)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
+
     def add_lending_purchase(self, purchase_id: int, purchase_time: int, lending_type: str, asset: str, amount: float,
                              auto_commit: bool = True):
         """
