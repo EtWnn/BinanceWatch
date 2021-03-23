@@ -1,6 +1,7 @@
 import datetime
 import math
 import time
+from typing import Optional
 
 import dateparser
 from binance.client import Client
@@ -31,7 +32,7 @@ class BinanceManager:
         self.update_spot_withdraws()
         self.update_spot_dusts()
         self.update_spot_dividends()
-        self.update_universal_transfers()
+        self.update_universal_transfers(transfer_filter='MAIN')
 
     def update_cross_margin(self):
         """
@@ -44,7 +45,7 @@ class BinanceManager:
         self.update_cross_margin_loans()
         self.update_cross_margin_interests()
         self.update_cross_margin_repays()
-        self.update_universal_transfers()
+        self.update_universal_transfers(transfer_filter='MARGIN')
 
     def update_lending(self):
         """
@@ -57,7 +58,7 @@ class BinanceManager:
         self.update_lending_purchases()
         self.update_lending_redemptions()
 
-    def update_universal_transfers(self):
+    def update_universal_transfers(self, transfer_filter: Optional[str] = None):
         """
         update the universal transfers database.
 
@@ -65,14 +66,20 @@ class BinanceManager:
         https://python-binance.readthedocs.io/en/latest/binance.html#binance.client.Client.query_universal_transfer_history
         https://binance-docs.github.io/apidocs/spot/en/#query-user-universal-transfer-history
 
+        :param transfer_filter: if not None, only the transfers containing this filter will be updated (ex: 'MAIN')
+        :type transfer_filter: Optional[str]
         :return: None
         :rtype: None
         """
-        transfers_types = ['MAIN_C2C', 'MAIN_UMFUTURE', 'MAIN_CMFUTURE', 'MAIN_MARGIN', 'MAIN_MINING', 'C2C_MAIN',
-                           'C2C_UMFUTURE', 'C2C_MINING', 'C2C_MARGIN', 'UMFUTURE_MAIN', 'UMFUTURE_C2C',
-                           'UMFUTURE_MARGIN', 'CMFUTURE_MAIN', 'CMFUTURE_MARGIN', 'MARGIN_MAIN', 'MARGIN_UMFUTURE',
-                           'MARGIN_CMFUTURE', 'MARGIN_MINING', 'MARGIN_C2C', 'MINING_MAIN', 'MINING_UMFUTURE',
-                           'MINING_C2C', 'MINING_MARGIN']
+        all_types = ['MAIN_C2C', 'MAIN_UMFUTURE', 'MAIN_CMFUTURE', 'MAIN_MARGIN', 'MAIN_MINING', 'C2C_MAIN',
+                     'C2C_UMFUTURE', 'C2C_MINING', 'C2C_MARGIN', 'UMFUTURE_MAIN', 'UMFUTURE_C2C',
+                     'UMFUTURE_MARGIN', 'CMFUTURE_MAIN', 'CMFUTURE_MARGIN', 'MARGIN_MAIN', 'MARGIN_UMFUTURE',
+                     'MARGIN_CMFUTURE', 'MARGIN_MINING', 'MARGIN_C2C', 'MINING_MAIN', 'MINING_UMFUTURE',
+                     'MINING_C2C', 'MINING_MARGIN']
+        if transfer_filter is not None:
+            transfers_types = list(filter(lambda x: transfer_filter in x, all_types))
+        else:
+            transfers_types = all_types
         pbar = tqdm(total=len(transfers_types))
         for transfer_type in transfers_types:
             pbar.set_description(f"fetching transfer type {transfer_type}")
@@ -673,4 +680,3 @@ class BinanceManager:
                                            limit=limit)
             pbar.update()
         pbar.close()
-
