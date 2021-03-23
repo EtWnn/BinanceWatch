@@ -49,10 +49,8 @@ It currently supports:
 [Generate an API Key](https://www.binance.com/en/my/settings/api-management) in your binance account. Only read
 permissions are needed.
 
-
-
 ```python
-from BinanceWatch.storage.BinanceManager import BinanceManager
+from BinanceWatch.BinanceManager import BinanceManager
 
 api_key = "<API_KEY>"
 api_secret = "<API_SECRET>"
