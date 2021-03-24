@@ -1,5 +1,5 @@
 ==============================
-Welcome to BinanceWatch v0.1.0
+Welcome to BinanceWatch v0.1.1
 ==============================
 
 Note
