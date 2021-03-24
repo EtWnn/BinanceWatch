@@ -15,7 +15,7 @@ your own risk.
 **Source Code:**
     https://github.com/EtWnn/BinanceWatch
 **Documentation:**
-    https://to_be_coming
+    https://BinanceWatch.readthedocs.io/en/latest/
 
 
 Features
