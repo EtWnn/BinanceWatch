@@ -442,7 +442,7 @@ class BinanceDataBase(DataBase):
         """
         return lending redemptions stored in the database. Asset type and time filters can be used
 
-        :param lending_type:fetch only redemptions from this lending type
+        :param lending_type: fetch only redemptions from this lending type
         :type lending_type: Optional[str]
         :param asset: fetch only redemptions from this asset
         :type asset: Optional[str]
@@ -530,7 +530,7 @@ class BinanceDataBase(DataBase):
         """
         return lending purchases stored in the database. Asset type and time filters can be used
 
-        :param lending_type:fetch only purchases from this lending type
+        :param lending_type: fetch only purchases from this lending type
         :type lending_type: Optional[str]
         :param asset: fetch only purchases from this asset
         :type asset: Optional[str]
@@ -616,7 +616,7 @@ class BinanceDataBase(DataBase):
         """
         return lending interests stored in the database. Asset type and time filters can be used
 
-        :param lending_type:fetch only interests from this lending type
+        :param lending_type: fetch only interests from this lending type
         :type lending_type: Optional[str]
         :param asset: fetch only interests from this asset
         :type asset: Optional[str]
@@ -971,7 +971,7 @@ class BinanceDataBase(DataBase):
         :type price: float
         :param fee: amount kept by the exchange
         :type fee: float
-        :param fee_asset:token unit for the fee
+        :param fee_asset: token unit for the fee
         :type fee_asset: str
         :param is_buyer: if the trade is a buy or a sell
         :type is_buyer: bool
