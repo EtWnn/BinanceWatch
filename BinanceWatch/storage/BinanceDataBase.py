@@ -680,7 +680,6 @@ class BinanceDataBase(DataBase):
                  auto_commit: bool = True):
         """
         add dust operation to the database
-        https://binance-docs.github.io/apidocs/spot/en/#dustlog-user_data
 
         :param tran_id: id of the transaction (non unique)
         :type tran_id: str
@@ -934,7 +933,8 @@ class BinanceDataBase(DataBase):
         fetch the latest time a deposit has been made on the spot account. If None is found, return the millistamp
         corresponding to 2017/1/1
 
-        :return:
+        :return: None
+        :rtype: None
         """
         table = tables.SPOT_DEPOSIT_TABLE
         selection = f"MAX({table.insertTime})"
