@@ -54,6 +54,16 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (1206491332,        # transfer id
+                'MAIN_MARGIN',      # transfer type
+                1589121841000,      # time
+                'BNB',              # asset
+                10.594112),         # amount
+            ]
         """
         table = tables.UNIVERSAL_TRANSFER_TABLE
 
@@ -76,7 +86,7 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_universal_transfer(self, transfer_type: str):
+    def get_last_universal_transfer_time(self, transfer_type: str) -> int:
         """
         return the latest time when a universal transfer was made
         If None, return the millistamp corresponding to 2017/01/01
@@ -148,6 +158,15 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                1559415215400,             # time
+                'BNB',                     # asset
+                0.51561,                   # interest
+                'PERIODIC_CONVERTED'),     # interest type
+            ]
         """
         if margin_type == 'cross':
             table = tables.CROSS_MARGIN_INTEREST_TABLE
@@ -255,6 +274,16 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (8289451654,        # transaction id
+                1559415215400,      # time
+                'USDT',             # asset
+                145.5491462,        # principal
+                0.51561),           # interest
+            ]
         """
         if margin_type == 'cross':
             table = tables.CROSS_MARGIN_REPAY_TABLE
@@ -278,7 +307,7 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_repay_time(self, asset: str, margin_type: str):
+    def get_last_repay_time(self, asset: str, margin_type: str) -> int:
         """
         return the latest time when a repay was made on a defined asset
         If None, return the millistamp corresponding to 2017/01/01
@@ -358,6 +387,15 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (8289451654,        # transaction id
+                1559415215400,      # time
+                'USDT',             # asset
+                145.5491462),       # amount
+            ]
         """
         if margin_type == 'cross':
             table = tables.CROSS_MARGIN_LOAN_TABLE
@@ -381,7 +419,7 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_loan_time(self, asset: str, margin_type: str):
+    def get_last_loan_time(self, asset: str, margin_type: str) -> int:
         """
         return the latest time when an loan was made on a defined asset
         If None, return the millistamp corresponding to 2017/01/01
@@ -442,7 +480,7 @@ class BinanceDataBase(DataBase):
         """
         return lending redemptions stored in the database. Asset type and time filters can be used
 
-        :param lending_type:fetch only redemptions from this lending type
+        :param lending_type: fetch only redemptions from this lending type
         :type lending_type: Optional[str]
         :param asset: fetch only redemptions from this asset
         :type asset: Optional[str]
@@ -452,6 +490,15 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                1612841562000,      # time
+                'DAILY',            # lending type
+                'LTC',              # asset
+                1.89151684),        # amount
+            ]
         """
         conditions_list = []
         table = tables.LENDING_REDEMPTION_TABLE
@@ -473,7 +520,7 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_lending_redemption_time(self, lending_type: Optional[str] = None):
+    def get_last_lending_redemption_time(self, lending_type: Optional[str] = None) -> int:
         """
         return the latest time when an lending redemption was made.
         If None, return the millistamp corresponding to 2017/01/01
@@ -530,7 +577,7 @@ class BinanceDataBase(DataBase):
         """
         return lending purchases stored in the database. Asset type and time filters can be used
 
-        :param lending_type:fetch only purchases from this lending type
+        :param lending_type: fetch only purchases from this lending type
         :type lending_type: Optional[str]
         :param asset: fetch only purchases from this asset
         :type asset: Optional[str]
@@ -540,6 +587,16 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (58516828,          # purchase id
+                1612841562000,      # time
+                'DAILY',            # lending type
+                'LTC',              # asset
+                1.89151684),        # amount
+            ]
         """
         conditions_list = []
         table = tables.LENDING_PURCHASE_TABLE
@@ -561,7 +618,7 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_lending_purchase_time(self, lending_type: Optional[str] = None):
+    def get_last_lending_purchase_time(self, lending_type: Optional[str] = None) -> int:
         """
         return the latest time when an lending purchase was made.
         If None, return the millistamp corresponding to 2017/01/01
@@ -616,7 +673,7 @@ class BinanceDataBase(DataBase):
         """
         return lending interests stored in the database. Asset type and time filters can be used
 
-        :param lending_type:fetch only interests from this lending type
+        :param lending_type: fetch only interests from this lending type
         :type lending_type: Optional[str]
         :param asset: fetch only interests from this asset
         :type asset: Optional[str]
@@ -626,6 +683,16 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (1619846515000,     # time
+                'DAILY',            # lending type
+                'DOT',              # asset
+                0.00490156)         # amount
+            ]
+
         """
         conditions_list = []
         table = tables.LENDING_INTEREST_TABLE
@@ -647,7 +714,7 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_lending_interest_time(self, lending_type: Optional[str] = None):
+    def get_last_lending_interest_time(self, lending_type: Optional[str] = None) -> int:
         """
         return the latest time when an interest was received.
         If None, return the millistamp corresponding to 2017/01/01
@@ -680,7 +747,6 @@ class BinanceDataBase(DataBase):
                  auto_commit: bool = True):
         """
         add dust operation to the database
-        https://binance-docs.github.io/apidocs/spot/en/#dustlog-user_data
 
         :param tran_id: id of the transaction (non unique)
         :type tran_id: str
@@ -716,6 +782,17 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (82156485284,       # transaction id
+                1605489113400,      # time
+                'TRX',              # asset
+                102.78415879,       # asset amount
+                0.09084498,         # bnb amount
+                0.00171514),        # bnb fee
+            ]
         """
         conditions_list = []
         table = tables.SPOT_DUST_TABLE
@@ -766,6 +843,16 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (8945138941,         # dividend id
+                1594513589000,       # time
+                'TRX',               # asset
+                0.18745654),         # amount
+            ]
+
         """
         conditions_list = []
         table = tables.SPOT_DIVIDEND_TABLE
@@ -842,6 +929,18 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                ('84984dcqq5z11gyjfa',  # withdraw id
+                'aazd8949vredqs56dz',   # transaction id
+                1599138389000,          # withdraw time
+                'XTZ',                  # asset
+                57.0194,                # amount
+                0.5),                   # fee
+            ]
+
         """
         conditions_list = []
         table = tables.SPOT_WITHDRAW_TABLE
@@ -912,6 +1011,16 @@ class BinanceDataBase(DataBase):
         :type end_time: Optional[int]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                ('azdf5e6a1d5z',    # transaction id
+                1589479004000,      # deposit time
+                'LTC',              # asset
+                14.25),             # amount
+            ]
+
         """
         conditions_list = []
         table = tables.SPOT_DEPOSIT_TABLE
@@ -934,7 +1043,8 @@ class BinanceDataBase(DataBase):
         fetch the latest time a deposit has been made on the spot account. If None is found, return the millistamp
         corresponding to 2017/1/1
 
-        :return:
+        :return: last deposit millistamp
+        :rtype: int
         """
         table = tables.SPOT_DEPOSIT_TABLE
         selection = f"MAX({table.insertTime})"
@@ -971,7 +1081,7 @@ class BinanceDataBase(DataBase):
         :type price: float
         :param fee: amount kept by the exchange
         :type fee: float
-        :param fee_asset:token unit for the fee
+        :param fee_asset: token unit for the fee
         :type fee_asset: str
         :param is_buyer: if the trade is a buy or a sell
         :type is_buyer: bool
@@ -1006,6 +1116,21 @@ class BinanceDataBase(DataBase):
         :type ref_asset: Optional[str]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (384518832,         # trade_id
+                1582892988052,      # trade time
+                'BTC',              # asset
+                'USDT',             # ref asset
+                0.0015,             # asset quantity
+                9011.2,             # asset price to ref asset
+                0.01425,            # fee
+                'USDT',             # fee asset
+                0),                 # is_buyer
+            ]
+
         """
         if trade_type == 'spot':
             table = tables.SPOT_TRADE_TABLE
