@@ -84,7 +84,7 @@ class BinanceManager:
         pbar = tqdm(total=len(transfers_types))
         for transfer_type in transfers_types:
             pbar.set_description(f"fetching transfer type {transfer_type}")
-            latest_time = self.db.get_last_universal_transfer(transfer_type=transfer_type) + 1
+            latest_time = self.db.get_last_universal_transfer_time(transfer_type=transfer_type) + 1
             current = 1
             while True:
                 universal_transfers = self.client.query_universal_transfer_history(type=transfer_type,
