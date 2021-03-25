@@ -4,3 +4,5 @@ dateparser
 requests
 python-binance
 appdirs
+sphinx
+sphinx_rtd_theme
