@@ -1,4 +1,4 @@
-BinanceManager
+Binance Manager
 ==============
 
 .. automodule:: BinanceWatch.BinanceManager
