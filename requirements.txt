@@ -1,0 +1,6 @@
+numpy
+tqdm
+dateparser
+requests
+python-binance
+appdirs

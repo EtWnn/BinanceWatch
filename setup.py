@@ -17,7 +17,7 @@ setup(
     license='MIT',
     description='Local tracker of a binance account',
     long_description=long_description,
-    long_description_content_type='text/x-rst',  # 'text/markdown'
+    long_description_content_type='text/x-rst',
     install_requires=['numpy', 'tqdm', 'dateparser', 'requests', 'python-binance', 'appdirs'],
     keywords='binance exchange wallet save tracking history bitcoin ethereum btc eth',
     classifiers=[
