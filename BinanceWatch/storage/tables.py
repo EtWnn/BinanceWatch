@@ -255,6 +255,93 @@ CROSS_MARGIN_INTEREST_TABLE = Table(
     ]
 )
 
+ISOLATED_MARGIN_TRADE_TABLE = Table(
+    'isolated_margin_trade',
+    [
+        'tradeId',
+        'tdTime',
+        'symbol',
+        'asset',
+        'refAsset',
+        'qty',
+        'price',
+        'fee',
+        'feeAsset',
+        'isBuyer'
+
+    ],
+    [
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL',
+        'TEXT',
+        'INTEGER'
+    ]
+)
+
+ISOLATED_MARGIN_LOAN_TABLE = Table(
+    "isolated_margin_loan_table",
+    [
+        'loanTime',
+        'symbol',
+        'asset',
+        'principal',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
+
+ISOLATED_MARGIN_REPAY_TABLE = Table(
+    "isolated_margin_repay_table",
+    [
+        'repayTime',
+        'symbol',
+        'asset',
+        'principal',
+        'interest',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
+
+ISOLATED_MARGIN_INTEREST_TABLE = Table(
+    "isolated_margin_interest_table",
+    [
+        'interestTime',
+        'symbol',
+        'asset',
+        'interest',
+        'interestType'
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'TEXT'
+    ]
+)
+
 UNIVERSAL_TRANSFER_TABLE = Table(
     "universal_transfer_table",
     [
