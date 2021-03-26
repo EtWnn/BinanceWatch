@@ -288,9 +288,9 @@ class BinanceManager:
             else:
                 break
 
-    def update_cross_margin_symbol_trades(self, asset: str, ref_asset: str, limit: int = 1000):
+    def update_margin_symbol_trades(self, asset: str, ref_asset: str, is_isolated: bool = False, limit: int = 1000):
         """
-        This update the cross_margin trades in the database for a single trading pair.
+        This update the margin trades in the database for a single trading pair.
         It will check the last trade id and will requests the all trades after this trade_id.
 
         sources:
@@ -301,18 +301,24 @@ class BinanceManager:
         :type asset: string
         :param ref_asset: name of the reference asset in the trading pair (ex 'USDT' for 'BTCUSDT')
         :type ref_asset: string
+        :param is_isolated: if margin type is isolated, default False
+        :type is_isolated: bool
         :param limit: max size of each trade requests
         :type limit: int
         :return: None
         :rtype: None
         """
+        trade_type = 'isolated_margin' if is_isolated else 'cross_margin'
         limit = min(1000, limit)
         symbol = asset + ref_asset
-        last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'cross_margin')
+        last_trade_id = self.db.get_max_trade_id(asset, ref_asset, trade_type)
         while True:
-            new_trades = self.client.get_margin_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            new_trades = self.client.get_margin_trades(symbol=symbol,
+                                                       fromId=last_trade_id + 1,
+                                                       isIsolated=is_isolated,
+                                                       limit=limit)
             for trade in new_trades:
-                self.db.add_trade(trade_type='cross_margin',
+                self.db.add_trade(trade_type=trade_type,
                                   trade_id=int(trade['id']),
                                   trade_time=int(trade['time']),
                                   asset=asset,
@@ -322,6 +328,7 @@ class BinanceManager:
                                   fee=float(trade['commission']),
                                   fee_asset=trade['commissionAsset'],
                                   is_buyer=trade['isBuyer'],
+                                  symbol=symbol,
                                   auto_commit=False
                                   )
                 last_trade_id = max(last_trade_id, int(trade['id']))
@@ -343,9 +350,9 @@ class BinanceManager:
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
             pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
-            self.update_cross_margin_symbol_trades(asset=symbol_info['base'],
-                                                   ref_asset=symbol_info['quote'],
-                                                   limit=limit)
+            self.update_margin_symbol_trades(asset=symbol_info['base'],
+                                             ref_asset=symbol_info['quote'],
+                                             limit=limit)
             pbar.update()
         pbar.close()
 
