@@ -1061,12 +1061,13 @@ class BinanceDataBase(DataBase):
         return result
 
     def add_trade(self, trade_type: str, trade_id: int, trade_time: int, asset: str, ref_asset: str, qty: float,
-                  price: float, fee: float, fee_asset: str, is_buyer: bool, auto_commit=True):
+                  price: float, fee: float, fee_asset: str, is_buyer: bool, symbol: Optional[str] = None,
+                  auto_commit: bool = True):
         """
         add a trade to the database
 
         :param trade_type: type trade executed
-        :type trade_type: string, must be one of {'spot', 'cross_margin'}
+        :type trade_type: string, must be one of {'spot', 'cross_margin', 'isolated_margin'}
         :param trade_id: id of the trade (binance id, unique per trading pair)
         :type trade_id: int
         :param trade_time: millistamp of the trade
@@ -1085,6 +1086,8 @@ class BinanceDataBase(DataBase):
         :type fee_asset: str
         :param is_buyer: if the trade is a buy or a sell
         :type is_buyer: bool
+        :param symbol: trading symbol, mandatory if thr trade_type is isolated margin
+        :type symbol: Optional[str]
         :param auto_commit: if the database should commit the change made, default True
         :type auto_commit: bool
         :return: None
@@ -1095,8 +1098,15 @@ class BinanceDataBase(DataBase):
             table = tables.SPOT_TRADE_TABLE
         elif trade_type == 'cross_margin':
             table = tables.CROSS_MARGIN_TRADE_TABLE
+        elif trade_type == 'isolated_margin':
+            table = tables.ISOLATED_MARGIN_TRADE_TABLE
+            if symbol is None:
+                raise ValueError("trade_type was isolated margin but symbol was not provided")
+            row = (trade_id, trade_time, symbol, asset, ref_asset, qty, price, fee, fee_asset, int(is_buyer))
         else:
-            raise ValueError(f"trade type should be one of ('spot', 'cross_margin') but {trade_type} was received")
+            msg = f"trade type should be one of ('spot', 'cross_margin', 'isolated_margin') but {trade_type} was" \
+                  f" received"
+            raise ValueError(msg)
         self.add_row(table, row, auto_commit)
 
     def get_trades(self, trade_type: str, start_time: Optional[int] = None, end_time: Optional[int] = None,
@@ -1105,7 +1115,7 @@ class BinanceDataBase(DataBase):
         return trades stored in the database. asset type, ref_asset type and time filters can be used
 
         :param trade_type: type trade executed
-        :type trade_type: string, must be one of ('spot', 'cross_margin')
+        :type trade_type: string, must be one of ('spot', 'cross_margin', 'isolated_margin')
         :param start_time: fetch only trades after this millistamp
         :type start_time: Optional[int]
         :param end_time: fetch only trades before this millistamp
@@ -1116,6 +1126,8 @@ class BinanceDataBase(DataBase):
         :type ref_asset: Optional[str]
         :return: The raw rows selected as saved in the database
         :rtype: List[Tuple]
+
+        Return for spot and cross margin:
 
         .. code-block:: python
 
@@ -1131,13 +1143,35 @@ class BinanceDataBase(DataBase):
                 0),                 # is_buyer
             ]
 
+        Return for isolated margin:
+
+        .. code-block:: python
+
+            [
+                (384518832,         # trade_id
+                1582892988052,      # trade time
+                'BTCUSDT',          # symbol
+                'BTC',              # asset
+                'USDT',             # ref asset
+                0.0015,             # asset quantity
+                9011.2,             # asset price to ref asset
+                0.01425,            # fee
+                'USDT',             # fee asset
+                0),                 # is_buyer
+            ]
+
+
         """
         if trade_type == 'spot':
             table = tables.SPOT_TRADE_TABLE
         elif trade_type == 'cross_margin':
             table = tables.CROSS_MARGIN_TRADE_TABLE
+        elif trade_type == 'isolated_margin':
+            table = tables.ISOLATED_MARGIN_TRADE_TABLE
         else:
-            raise ValueError(f"trade type should be one of ('spot', 'cross_margin') but {trade_type} was received")
+            msg = f"trade type should be one of ('spot', 'cross_margin', 'isolated_margin') but {trade_type} was" \
+                  f" received"
+            raise ValueError(msg)
         conditions_list = []
         if start_time is not None:
             conditions_list.append((table.tdTime,
@@ -1174,8 +1208,12 @@ class BinanceDataBase(DataBase):
             table = tables.SPOT_TRADE_TABLE
         elif trade_type == 'cross_margin':
             table = tables.CROSS_MARGIN_TRADE_TABLE
+        elif trade_type == 'isolated_margin':
+            table = tables.ISOLATED_MARGIN_TRADE_TABLE
         else:
-            raise ValueError(f"trade type should be one of {'spot', 'cross_margin'} but {trade_type} was received")
+            msg = f"trade type should be one of ('spot', 'cross_margin', 'isolated_margin') but {trade_type} was" \
+                  f" received"
+            raise ValueError(msg)
 
         selection = f"MAX({table.tradeId})"
         conditions_list = [
