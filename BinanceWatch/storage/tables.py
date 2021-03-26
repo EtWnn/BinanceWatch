@@ -1,10 +1,10 @@
-from dataclasses import dataclass
 from typing import List, Optional
 
 
 class Table:
     """
     @DynamicAttrs
+    This class is used to describe the tables that will be used to in the database
     """
 
     def __init__(self, name: str, columns_names: List[str], columns_sql_types: List[str],
