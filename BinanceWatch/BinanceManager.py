@@ -1,10 +1,11 @@
 import datetime
 import math
 import time
-from typing import Optional
+from typing import Optional, Dict
 
 import dateparser
 from binance.client import Client
+from binance.exceptions import BinanceAPIException
 from tqdm import tqdm
 
 from BinanceWatch.storage import tables
@@ -17,6 +18,7 @@ class BinanceManager:
     """
     This class is in charge of filling the database by calling the binance API
     """
+    API_MAX_RETRY = 3
 
     def __init__(self, api_key: str, api_secret: str, account_name: str = 'default'):
         """
@@ -695,3 +697,35 @@ class BinanceManager:
                                            limit=limit)
             pbar.update()
         pbar.close()
+
+    def _call_binance_client(self, method_name: str, params: Optional[Dict] = None, retry_count: int = 0):
+        """
+        This method is used to handle rate limits: if a rate limits is breached, it will wait the necessary time
+        to call again the API.
+
+        :param method_name: name of the method binance.Client to call
+        :type method_name: str
+        :param params: parameters to pass to the above method
+        :type params: Dict
+        :param retry_count: internal use only to count the number of retry if rate limits are breached
+        :type retry_count: int
+        :return: response of binance.Client method
+        :rtype: Dict
+        """
+        if params is None:
+            params = dict()
+        if retry_count >= BinanceManager.API_MAX_RETRY:
+            raise RuntimeError(f"The API rate limits has been breached {retry_count} times")
+
+        try:
+            return getattr(self.client, method_name)(**params)
+        except BinanceAPIException as err:
+            if err.code == -1021:  # API rate Limits
+                wait_time = err.response.headers['Retry-After']
+                if err.response.status_code == 418:  # ban
+                    self.logger.error(f"API calls resulted in a ban, retry in {wait_time} seconds")
+                    raise err
+                self.logger.info(f"API calls resulted in a breach of rate limits, will retry after {wait_time} seconds")
+                time.sleep(wait_time + 1)
+                return self._call_binance_client(method_name, params, retry_count + 1)
+            raise err
