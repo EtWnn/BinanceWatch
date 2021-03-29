@@ -546,7 +546,7 @@ class BinanceManager:
         """
         self.db.drop_table(tables.SPOT_DUST_TABLE)
 
-        result = self.client.get_dust_log()
+        result = self._call_binance_client('get_dust_log')
         dusts = result['results']
         pbar = tqdm(total=dusts['total'])
         pbar.set_description("fetching spot dusts")
@@ -586,18 +586,21 @@ class BinanceManager:
         pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot dividends")
         while start_time < now_millistamp:
+            # the stable working version of client.get_asset_dividend_history is not released yet,
+            # for now it has a post error, so this protected member is used in the meantime
             params = {
                 'startTime': start_time,
                 'endTime': start_time + delta_jump,
                 'limit': limit
             }
-            # the stable working version of client.get_asset_dividend_history is not released yet,
-            # for now it has a post error, so this protected member is used in the meantime
-            result = self.client._request_margin_api('get',
-                                                     'asset/assetDividend',
-                                                     True,
-                                                     data=params
-                                                     )
+            client_params = {
+                'method': 'get',
+                'path': 'asset/assetDividend',
+                'signed': True,
+                'data': params
+            }
+            result = self._call_binance_client('_request_margin_api', client_params)
+
             dividends = result['rows']
             for div in dividends:
                 self.db.add_dividend(div_id=int(div['tranId']),
@@ -637,7 +640,13 @@ class BinanceManager:
         pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot withdraws")
         while start_time < now_millistamp:
-            result = self.client.get_withdraw_history(startTime=start_time, endTime=start_time + delta_jump, status=6)
+            client_params = {
+                'startTime': start_time,
+                'endTime': start_time + delta_jump,
+                'status': 6
+            }
+            result = self._call_binance_client('get_withdraw_history', client_params)
+
             withdraws = result['withdrawList']
             for withdraw in withdraws:
                 self.db.add_withdraw(withdraw_id=withdraw['id'],
@@ -676,7 +685,13 @@ class BinanceManager:
         pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot deposits")
         while start_time < now_millistamp:
-            result = self.client.get_deposit_history(startTime=start_time, endTime=start_time + delta_jump, status=1)
+            client_params = {
+                'startTime': start_time,
+                'endTime': start_time + delta_jump,
+                'status': 1
+            }
+            result = self._call_binance_client('get_deposit_history', client_params)
+
             deposits = result['depositList']
             for deposit in deposits:
                 self.db.add_deposit(tx_id=deposit['txId'],
@@ -712,7 +727,13 @@ class BinanceManager:
         symbol = asset + ref_asset
         last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'spot')
         while True:
-            new_trades = self.client.get_my_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            client_params = {
+                'symbol': symbol,
+                'fromId': last_trade_id + 1,
+                'limit': limit
+            }
+            new_trades = self._call_binance_client('get_my_trades', client_params)
+
             for trade in new_trades:
                 self.db.add_trade(trade_type='spot',
                                   trade_id=int(trade['id']),
