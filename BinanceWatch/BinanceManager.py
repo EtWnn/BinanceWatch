@@ -720,8 +720,8 @@ class BinanceManager:
         try:
             return getattr(self.client, method_name)(**params)
         except BinanceAPIException as err:
-            if err.code == -1021:  # API rate Limits
-                wait_time = err.response.headers['Retry-After']
+            if err.code == -1003:  # API rate Limits
+                wait_time = float(err.response.headers['Retry-After'])
                 if err.response.status_code == 418:  # ban
                     self.logger.error(f"API calls resulted in a ban, retry in {wait_time} seconds")
                     raise err
