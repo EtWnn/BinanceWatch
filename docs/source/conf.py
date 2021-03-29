@@ -21,8 +21,11 @@ copyright = '2021, EtWnn'
 author = 'EtWnn'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.1'
-
+this_directory = os.path.abspath(os.path.dirname(__file__))
+about = {}
+with open(os.path.join(this_directory, '../../BinanceWatch/__init__.py'), encoding='utf-8') as f:
+    exec(f.read(), about)
+release = about['__version__']
 
 # -- General configuration ---------------------------------------------------
 
