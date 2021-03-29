@@ -62,6 +62,14 @@ permissions are needed.
 
     pip install BinanceWatch
 
+If you prefer to install the latest developments use:
+
+.. code:: bash
+
+    pip install git+https://github.com/EtWnn/BinanceWatch.git@develop
+
+Use your Binance api keys to initiate the manager:
+
 .. code:: python
 
     from BinanceWatch.BinanceManager import BinanceManager
