@@ -17,8 +17,19 @@ class BinanceManager:
     This class is in charge of filling the database by calling the binance API
     """
 
-    def __init__(self, api_key: str, api_secret: str):
-        self.db = BinanceDataBase()
+    def __init__(self, api_key: str, api_secret: str, account_name: str = 'binance'):
+        """
+        initialise the binance manager.
+
+        :param api_key: key for the Binance api
+        :type api_key: str
+        :param api_secret: secret for the Binance api
+        :type api_secret: str
+        :param account_name: if you have several accounts to monitor, you need to give them different names or the
+        database will collide
+        :type account_name: str
+        """
+        self.db = BinanceDataBase(name=f"{account_name}_db")
         self.client = Client(api_key=api_key, api_secret=api_secret)
 
     def update_spot(self):
