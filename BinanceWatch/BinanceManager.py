@@ -424,10 +424,14 @@ class BinanceManager:
             latest_time = self.db.get_last_lending_redemption_time(lending_type=lending_type) + 1
             current = 1
             while True:
-                lending_redemptions = self.client.get_lending_redemption_history(lendingType=lending_type,
-                                                                                 startTime=latest_time,
-                                                                                 current=current,
-                                                                                 size=100)
+                client_params = {
+                    'lendingType': lending_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                lending_redemptions = self._call_binance_client('get_lending_redemption_history', client_params)
+
                 for li in lending_redemptions:
                     if li['status'] == 'PAID':
                         self.db.add_lending_redemption(redemption_time=li['createTime'],
@@ -462,10 +466,14 @@ class BinanceManager:
             latest_time = self.db.get_last_lending_purchase_time(lending_type=lending_type) + 1
             current = 1
             while True:
-                lending_purchases = self.client.get_lending_purchase_history(lendingType=lending_type,
-                                                                             startTime=latest_time,
-                                                                             current=current,
-                                                                             size=100)
+                client_params = {
+                    'lendingType': lending_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                lending_purchases = self._call_binance_client('get_lending_purchase_history', client_params)
+
                 for li in lending_purchases:
                     if li['status'] == 'SUCCESS':
                         self.db.add_lending_purchase(purchase_id=li['purchaseId'],
@@ -501,10 +509,14 @@ class BinanceManager:
             latest_time = self.db.get_last_lending_interest_time(lending_type=lending_type) + 3600 * 1000  # add 1 hour
             current = 1
             while True:
-                lending_interests = self.client.get_lending_interest_history(lendingType=lending_type,
-                                                                             startTime=latest_time,
-                                                                             current=current,
-                                                                             size=100)
+                client_params = {
+                    'lendingType': lending_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                lending_interests = self._call_binance_client('get_lending_interest_history', client_params)
+
                 for li in lending_interests:
                     self.db.add_lending_interest(time=li['time'],
                                                  lending_type=li['lendingType'],
