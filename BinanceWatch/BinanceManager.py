@@ -103,10 +103,14 @@ class BinanceManager:
             latest_time = self.db.get_last_universal_transfer_time(transfer_type=transfer_type) + 1
             current = 1
             while True:
-                universal_transfers = self.client.query_universal_transfer_history(type=transfer_type,
-                                                                                   startTime=latest_time,
-                                                                                   current=current,
-                                                                                   size=100)
+                client_params = {
+                    'type': transfer_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                universal_transfers = self._call_binance_client('query_universal_transfer_history', client_params)
+
                 try:
                     universal_transfers = universal_transfers['rows']
                 except KeyError:
@@ -150,8 +154,15 @@ class BinanceManager:
                 'size': 100,
                 'archived': archived
             }
+
             # no built-in method yet in python-binance for margin/interestHistory
-            interests = self.client._request_margin_api('get', 'margin/interestHistory', signed=True, data=params)
+            client_params = {
+                'method': 'get',
+                'path': 'margin/interestHistory',
+                'signed': True,
+                'data': params
+            }
+            interests = self._call_binance_client('_request_margin_api', client_params)
 
             for interest in interests['rows']:
                 self.db.add_margin_interest(margin_type=margin_type,
@@ -180,7 +191,12 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
         assets = set()
         for symbol_info in symbols_info:
             assets.add(symbol_info['base'])
@@ -213,12 +229,16 @@ class BinanceManager:
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
         while True:
-            repays = self.client.get_margin_repay_details(asset=asset,
-                                                          current=current,
-                                                          startTime=latest_time + 1000,
-                                                          archived=archived,
-                                                          isolatedSymbol=isolated_symbol,
-                                                          size=100)
+            client_params = {
+                'asset': asset,
+                'current':current,
+                'startTime': latest_time + 1000,
+                'archived': archived,
+                'isolatedSymbol': isolated_symbol,
+                'size': 100
+            }
+            repays = self._call_binance_client('get_margin_repay_details', client_params)
+
             for repay in repays['rows']:
                 if repay['status'] == 'CONFIRMED':
                     self.db.add_repay(margin_type=margin_type,
@@ -246,7 +266,12 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
         assets = set()
         for symbol_info in symbols_info:
             assets.add(symbol_info['base'])
@@ -279,12 +304,16 @@ class BinanceManager:
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
         while True:
-            loans = self.client.get_margin_loan_details(asset=asset,
-                                                        current=current,
-                                                        startTime=latest_time + 1000,
-                                                        archived=archived,
-                                                        isolatedSymbol=isolated_symbol,
-                                                        size=100)
+            client_params = {
+                'asset': asset,
+                'current': current,
+                'startTime': latest_time + 1000,
+                'archived': archived,
+                'isolatedSymbol': isolated_symbol,
+                'size': 100
+            }
+            loans = self._call_binance_client('get_margin_loan_details', client_params)
+
             for loan in loans['rows']:
                 if loan['status'] == 'CONFIRMED':
                     self.db.add_loan(margin_type=margin_type,
@@ -326,7 +355,13 @@ class BinanceManager:
         symbol = asset + ref_asset
         last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'cross_margin')
         while True:
-            new_trades = self.client.get_margin_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            client_params = {
+                'symbol': symbol,
+                'fromId': last_trade_id + 1,
+                'limit': limit
+            }
+            new_trades = self._call_binance_client('get_margin_trades', client_params)
+
             for trade in new_trades:
                 self.db.add_trade(trade_type='cross_margin',
                                   trade_id=int(trade['id']),
@@ -355,7 +390,13 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
+
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
             pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
