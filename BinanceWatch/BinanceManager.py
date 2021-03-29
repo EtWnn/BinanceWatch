@@ -8,6 +8,7 @@ from binance.client import Client
 from tqdm import tqdm
 
 from BinanceWatch.storage import tables
+from BinanceWatch.utils.LoggerGenerator import LoggerGenerator
 from BinanceWatch.utils.time_utils import datetime_to_millistamp
 from BinanceWatch.storage.BinanceDataBase import BinanceDataBase
 
@@ -17,7 +18,7 @@ class BinanceManager:
     This class is in charge of filling the database by calling the binance API
     """
 
-    def __init__(self, api_key: str, api_secret: str, account_name: str = 'binance'):
+    def __init__(self, api_key: str, api_secret: str, account_name: str = 'default'):
         """
         initialise the binance manager.
 
@@ -29,8 +30,10 @@ class BinanceManager:
         database will collide
         :type account_name: str
         """
-        self.db = BinanceDataBase(name=f"{account_name}_db")
+        self.account_name = account_name
+        self.db = BinanceDataBase(name=f"{self.account_name}_db")
         self.client = Client(api_key=api_key, api_secret=api_secret)
+        self.logger = LoggerGenerator.get_logger(f"BinanceManager_{self.account_name}")
 
     def update_spot(self):
         """
