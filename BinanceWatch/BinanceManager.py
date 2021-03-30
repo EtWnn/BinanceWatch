@@ -1,13 +1,15 @@
 import datetime
 import math
 import time
-from typing import Optional
+from typing import Optional, Dict
 
 import dateparser
 from binance.client import Client
+from binance.exceptions import BinanceAPIException
 from tqdm import tqdm
 
 from BinanceWatch.storage import tables
+from BinanceWatch.utils.LoggerGenerator import LoggerGenerator
 from BinanceWatch.utils.time_utils import datetime_to_millistamp
 from BinanceWatch.storage.BinanceDataBase import BinanceDataBase
 
@@ -16,10 +18,24 @@ class BinanceManager:
     """
     This class is in charge of filling the database by calling the binance API
     """
+    API_MAX_RETRY = 3
 
-    def __init__(self, api_key: str, api_secret: str):
-        self.db = BinanceDataBase()
+    def __init__(self, api_key: str, api_secret: str, account_name: str = 'default'):
+        """
+        initialise the binance manager.
+
+        :param api_key: key for the Binance api
+        :type api_key: str
+        :param api_secret: secret for the Binance api
+        :type api_secret: str
+        :param account_name: if you have several accounts to monitor, you need to give them different names or the
+        database will collide
+        :type account_name: str
+        """
+        self.account_name = account_name
+        self.db = BinanceDataBase(name=f"{self.account_name}_db")
         self.client = Client(api_key=api_key, api_secret=api_secret)
+        self.logger = LoggerGenerator.get_logger(f"BinanceManager_{self.account_name}")
 
     def update_spot(self):
         """
@@ -87,10 +103,14 @@ class BinanceManager:
             latest_time = self.db.get_last_universal_transfer_time(transfer_type=transfer_type) + 1
             current = 1
             while True:
-                universal_transfers = self.client.query_universal_transfer_history(type=transfer_type,
-                                                                                   startTime=latest_time,
-                                                                                   current=current,
-                                                                                   size=100)
+                client_params = {
+                    'type': transfer_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                universal_transfers = self._call_binance_client('query_universal_transfer_history', client_params)
+
                 try:
                     universal_transfers = universal_transfers['rows']
                 except KeyError:
@@ -134,8 +154,15 @@ class BinanceManager:
                 'size': 100,
                 'archived': archived
             }
+
             # no built-in method yet in python-binance for margin/interestHistory
-            interests = self.client._request_margin_api('get', 'margin/interestHistory', signed=True, data=params)
+            client_params = {
+                'method': 'get',
+                'path': 'margin/interestHistory',
+                'signed': True,
+                'data': params
+            }
+            interests = self._call_binance_client('_request_margin_api', client_params)
 
             for interest in interests['rows']:
                 self.db.add_margin_interest(margin_type=margin_type,
@@ -164,7 +191,12 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
         assets = set()
         for symbol_info in symbols_info:
             assets.add(symbol_info['base'])
@@ -197,12 +229,16 @@ class BinanceManager:
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
         while True:
-            repays = self.client.get_margin_repay_details(asset=asset,
-                                                          current=current,
-                                                          startTime=latest_time + 1000,
-                                                          archived=archived,
-                                                          isolatedSymbol=isolated_symbol,
-                                                          size=100)
+            client_params = {
+                'asset': asset,
+                'current':current,
+                'startTime': latest_time + 1000,
+                'archived': archived,
+                'isolatedSymbol': isolated_symbol,
+                'size': 100
+            }
+            repays = self._call_binance_client('get_margin_repay_details', client_params)
+
             for repay in repays['rows']:
                 if repay['status'] == 'CONFIRMED':
                     self.db.add_repay(margin_type=margin_type,
@@ -230,7 +266,12 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
         assets = set()
         for symbol_info in symbols_info:
             assets.add(symbol_info['base'])
@@ -263,12 +304,16 @@ class BinanceManager:
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
         while True:
-            loans = self.client.get_margin_loan_details(asset=asset,
-                                                        current=current,
-                                                        startTime=latest_time + 1000,
-                                                        archived=archived,
-                                                        isolatedSymbol=isolated_symbol,
-                                                        size=100)
+            client_params = {
+                'asset': asset,
+                'current': current,
+                'startTime': latest_time + 1000,
+                'archived': archived,
+                'isolatedSymbol': isolated_symbol,
+                'size': 100
+            }
+            loans = self._call_binance_client('get_margin_loan_details', client_params)
+
             for loan in loans['rows']:
                 if loan['status'] == 'CONFIRMED':
                     self.db.add_loan(margin_type=margin_type,
@@ -310,7 +355,13 @@ class BinanceManager:
         symbol = asset + ref_asset
         last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'cross_margin')
         while True:
-            new_trades = self.client.get_margin_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            client_params = {
+                'symbol': symbol,
+                'fromId': last_trade_id + 1,
+                'limit': limit
+            }
+            new_trades = self._call_binance_client('get_margin_trades', client_params)
+
             for trade in new_trades:
                 self.db.add_trade(trade_type='cross_margin',
                                   trade_id=int(trade['id']),
@@ -339,7 +390,13 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.client._request_margin_api('get', 'margin/allPairs', data={})  # not built-in yet
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
+
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
             pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
@@ -367,10 +424,14 @@ class BinanceManager:
             latest_time = self.db.get_last_lending_redemption_time(lending_type=lending_type) + 1
             current = 1
             while True:
-                lending_redemptions = self.client.get_lending_redemption_history(lendingType=lending_type,
-                                                                                 startTime=latest_time,
-                                                                                 current=current,
-                                                                                 size=100)
+                client_params = {
+                    'lendingType': lending_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                lending_redemptions = self._call_binance_client('get_lending_redemption_history', client_params)
+
                 for li in lending_redemptions:
                     if li['status'] == 'PAID':
                         self.db.add_lending_redemption(redemption_time=li['createTime'],
@@ -405,10 +466,14 @@ class BinanceManager:
             latest_time = self.db.get_last_lending_purchase_time(lending_type=lending_type) + 1
             current = 1
             while True:
-                lending_purchases = self.client.get_lending_purchase_history(lendingType=lending_type,
-                                                                             startTime=latest_time,
-                                                                             current=current,
-                                                                             size=100)
+                client_params = {
+                    'lendingType': lending_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                lending_purchases = self._call_binance_client('get_lending_purchase_history', client_params)
+
                 for li in lending_purchases:
                     if li['status'] == 'SUCCESS':
                         self.db.add_lending_purchase(purchase_id=li['purchaseId'],
@@ -444,10 +509,14 @@ class BinanceManager:
             latest_time = self.db.get_last_lending_interest_time(lending_type=lending_type) + 3600 * 1000  # add 1 hour
             current = 1
             while True:
-                lending_interests = self.client.get_lending_interest_history(lendingType=lending_type,
-                                                                             startTime=latest_time,
-                                                                             current=current,
-                                                                             size=100)
+                client_params = {
+                    'lendingType': lending_type,
+                    'startTime': latest_time,
+                    'current': current,
+                    'size': 100
+                }
+                lending_interests = self._call_binance_client('get_lending_interest_history', client_params)
+
                 for li in lending_interests:
                     self.db.add_lending_interest(time=li['time'],
                                                  lending_type=li['lendingType'],
@@ -477,7 +546,7 @@ class BinanceManager:
         """
         self.db.drop_table(tables.SPOT_DUST_TABLE)
 
-        result = self.client.get_dust_log()
+        result = self._call_binance_client('get_dust_log')
         dusts = result['results']
         pbar = tqdm(total=dusts['total'])
         pbar.set_description("fetching spot dusts")
@@ -517,18 +586,21 @@ class BinanceManager:
         pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot dividends")
         while start_time < now_millistamp:
+            # the stable working version of client.get_asset_dividend_history is not released yet,
+            # for now it has a post error, so this protected member is used in the meantime
             params = {
                 'startTime': start_time,
                 'endTime': start_time + delta_jump,
                 'limit': limit
             }
-            # the stable working version of client.get_asset_dividend_history is not released yet,
-            # for now it has a post error, so this protected member is used in the meantime
-            result = self.client._request_margin_api('get',
-                                                     'asset/assetDividend',
-                                                     True,
-                                                     data=params
-                                                     )
+            client_params = {
+                'method': 'get',
+                'path': 'asset/assetDividend',
+                'signed': True,
+                'data': params
+            }
+            result = self._call_binance_client('_request_margin_api', client_params)
+
             dividends = result['rows']
             for div in dividends:
                 self.db.add_dividend(div_id=int(div['tranId']),
@@ -568,7 +640,13 @@ class BinanceManager:
         pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot withdraws")
         while start_time < now_millistamp:
-            result = self.client.get_withdraw_history(startTime=start_time, endTime=start_time + delta_jump, status=6)
+            client_params = {
+                'startTime': start_time,
+                'endTime': start_time + delta_jump,
+                'status': 6
+            }
+            result = self._call_binance_client('get_withdraw_history', client_params)
+
             withdraws = result['withdrawList']
             for withdraw in withdraws:
                 self.db.add_withdraw(withdraw_id=withdraw['id'],
@@ -607,7 +685,13 @@ class BinanceManager:
         pbar = tqdm(total=math.ceil((now_millistamp - start_time) / delta_jump))
         pbar.set_description("fetching spot deposits")
         while start_time < now_millistamp:
-            result = self.client.get_deposit_history(startTime=start_time, endTime=start_time + delta_jump, status=1)
+            client_params = {
+                'startTime': start_time,
+                'endTime': start_time + delta_jump,
+                'status': 1
+            }
+            result = self._call_binance_client('get_deposit_history', client_params)
+
             deposits = result['depositList']
             for deposit in deposits:
                 self.db.add_deposit(tx_id=deposit['txId'],
@@ -643,7 +727,13 @@ class BinanceManager:
         symbol = asset + ref_asset
         last_trade_id = self.db.get_max_trade_id(asset, ref_asset, 'spot')
         while True:
-            new_trades = self.client.get_my_trades(symbol=symbol, fromId=last_trade_id + 1, limit=limit)
+            client_params = {
+                'symbol': symbol,
+                'fromId': last_trade_id + 1,
+                'limit': limit
+            }
+            new_trades = self._call_binance_client('get_my_trades', client_params)
+
             for trade in new_trades:
                 self.db.add_trade(trade_type='spot',
                                   trade_id=int(trade['id']),
@@ -681,3 +771,35 @@ class BinanceManager:
                                            limit=limit)
             pbar.update()
         pbar.close()
+
+    def _call_binance_client(self, method_name: str, params: Optional[Dict] = None, retry_count: int = 0):
+        """
+        This method is used to handle rate limits: if a rate limits is breached, it will wait the necessary time
+        to call again the API.
+
+        :param method_name: name of the method binance.Client to call
+        :type method_name: str
+        :param params: parameters to pass to the above method
+        :type params: Dict
+        :param retry_count: internal use only to count the number of retry if rate limits are breached
+        :type retry_count: int
+        :return: response of binance.Client method
+        :rtype: Dict
+        """
+        if params is None:
+            params = dict()
+        if retry_count >= BinanceManager.API_MAX_RETRY:
+            raise RuntimeError(f"The API rate limits has been breached {retry_count} times")
+
+        try:
+            return getattr(self.client, method_name)(**params)
+        except BinanceAPIException as err:
+            if err.code == -1003:  # API rate Limits
+                wait_time = float(err.response.headers['Retry-After'])
+                if err.response.status_code == 418:  # ban
+                    self.logger.error(f"API calls resulted in a ban, retry in {wait_time} seconds")
+                    raise err
+                self.logger.info(f"API calls resulted in a breach of rate limits, will retry after {wait_time} seconds")
+                time.sleep(wait_time + 1)
+                return self._call_binance_client(method_name, params, retry_count + 1)
+            raise err
