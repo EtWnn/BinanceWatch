@@ -231,7 +231,7 @@ class BinanceManager:
         while True:
             client_params = {
                 'asset': asset,
-                'current':current,
+                'current': current,
                 'startTime': latest_time + 1000,
                 'archived': archived,
                 'isolatedSymbol': isolated_symbol,
@@ -795,11 +795,12 @@ class BinanceManager:
             return getattr(self.client, method_name)(**params)
         except BinanceAPIException as err:
             if err.code == -1003:  # API rate Limits
-                wait_time = float(err.response.headers['Retry-After'])
+                # wait_time = float(err.response.headers['Retry-After']) it seems to be always 0, so unusable
+                wait_time = 1 + 60 - datetime.datetime.now().timestamp() % 60  # number of seconds until next minute
                 if err.response.status_code == 418:  # ban
                     self.logger.error(f"API calls resulted in a ban, retry in {wait_time} seconds")
                     raise err
                 self.logger.info(f"API calls resulted in a breach of rate limits, will retry after {wait_time} seconds")
-                time.sleep(wait_time + 1)
+                time.sleep(wait_time)
                 return self._call_binance_client(method_name, params, retry_count + 1)
             raise err
