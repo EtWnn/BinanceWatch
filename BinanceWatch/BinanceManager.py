@@ -800,7 +800,8 @@ class BinanceManager:
                 if err.response.status_code == 418:  # ban
                     self.logger.error(f"API calls resulted in a ban, retry in {wait_time} seconds")
                     raise err
-                self.logger.info(f"API calls resulted in a breach of rate limits, will retry after {wait_time} seconds")
+                self.logger.info(f"API calls resulted in a breach of rate limits,"
+                                 f" will retry after {wait_time:.2f} seconds")
                 time.sleep(wait_time)
                 return self._call_binance_client(method_name, params, retry_count + 1)
             raise err
