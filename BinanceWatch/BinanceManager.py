@@ -611,7 +611,7 @@ class BinanceManager:
                                      )
             pbar.update()
             if len(dividends) < limit:
-                start_time += delta_jump
+                start_time += delta_jump + 1  # endTime is included in the previous return, so we have to add 1
             else:  # limit was reached before the end of the time windows
                 start_time = int(dividends[0]['divTime']) + 1
             if len(dividends):
@@ -658,7 +658,7 @@ class BinanceManager:
                                      auto_commit=False
                                      )
             pbar.update()
-            start_time += delta_jump
+            start_time += delta_jump + 1  # endTime is included in the previous return, so we have to add 1
             if len(withdraws):
                 self.db.commit()
         pbar.close()
@@ -700,7 +700,7 @@ class BinanceManager:
                                     amount=float(deposit['amount']),
                                     auto_commit=False)
             pbar.update()
-            start_time += delta_jump
+            start_time += delta_jump + 1  # endTime is included in the previous return, so we have to add 1
             if len(deposits):
                 self.db.commit()
         pbar.close()
