@@ -1,6 +1,6 @@
 DataBase
 ========
 
-.. automodule:: BinanceWatch.storage.Database
+.. automodule:: BinanceWatch.storage.DataBase
     :members:
     :undoc-members:
