@@ -86,7 +86,7 @@ class DataBase:
     def add_row(self, table: Table, row: Tuple, auto_commit: bool = True, update_if_exists: bool = False):
         row_s = ", ".join(f"'{v}'" for v in row)
         row_s = f'({row_s})'
-        execution_order = f"INSERT INTO {table.name} VALUES {row_s}"
+        execution_order = f"INSERT OR IGNORE INTO {table.name} VALUES {row_s}"
         try:
             self.db_cursor.execute(execution_order)
             if auto_commit:
