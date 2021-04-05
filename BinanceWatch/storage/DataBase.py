@@ -100,6 +100,9 @@ class DataBase:
             if update_if_exists:
                 self.update_row(table, row, auto_commit)
             else:
+                existing_row = self.get_row_by_key(table, row[0])
+                msg = f"tried to insert {row} in the table {table.name} but the row is occupied: {existing_row}"
+                self.logger.error(msg)
                 raise err
 
     def add_rows(self, table: Table, rows: List[Tuple], auto_commit: bool = True, update_if_exists: bool = False):
