@@ -28,8 +28,28 @@ class DataBase:
         self.name = name
         self.logger = LoggerGenerator.get_logger(self.name)
         self.save_path = get_data_path() / f"{name}.db"
+        self.db_conn = None
+        self.db_cursor = None
+        self.connect()
+
+    def connect(self):
+        """
+        Connect to the sqlite3 database
+
+        :return: None
+        :rtype: None
+        """
         self.db_conn = sqlite3.connect(self.save_path)
         self.db_cursor = self.db_conn.cursor()
+
+    def close(self):
+        """
+        close the connection with the sqlite3 database
+
+        :return: None
+        :rtype: None
+        """
+        self.db_conn.close()
 
     def _fetch_rows(self, execution_cmd: str):
         """
