@@ -1,5 +1,5 @@
 ===================================
-Welcome to BinanceWatch v0.1.2
+Welcome to BinanceWatch v0.1.3
 ===================================
 
 Note
@@ -15,7 +15,7 @@ your own risk.
 **Source Code:**
     https://github.com/EtWnn/BinanceWatch
 **Documentation:**
-    https://binancewatch.readthedocs.io/en/latest/
+    https://binancewatch.readthedocs.io
 
 
 Features

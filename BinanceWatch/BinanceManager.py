@@ -22,14 +22,14 @@ class BinanceManager:
 
     def __init__(self, api_key: str, api_secret: str, account_name: str = 'default'):
         """
-        initialise the binance manager.
+        Initialise the binance manager.
 
         :param api_key: key for the Binance api
         :type api_key: str
         :param api_secret: secret for the Binance api
         :type api_secret: str
         :param account_name: if you have several accounts to monitor, you need to give them different names or the
-        database will collide
+            database will collide
         :type account_name: str
         """
         self.account_name = account_name
@@ -231,7 +231,7 @@ class BinanceManager:
         while True:
             client_params = {
                 'asset': asset,
-                'current':current,
+                'current': current,
                 'startTime': latest_time + 1000,
                 'archived': archived,
                 'isolatedSymbol': isolated_symbol,
@@ -611,7 +611,7 @@ class BinanceManager:
                                      )
             pbar.update()
             if len(dividends) < limit:
-                start_time += delta_jump
+                start_time += delta_jump + 1  # endTime is included in the previous return, so we have to add 1
             else:  # limit was reached before the end of the time windows
                 start_time = int(dividends[0]['divTime']) + 1
             if len(dividends):
@@ -658,7 +658,7 @@ class BinanceManager:
                                      auto_commit=False
                                      )
             pbar.update()
-            start_time += delta_jump
+            start_time += delta_jump + 1  # endTime is included in the previous return, so we have to add 1
             if len(withdraws):
                 self.db.commit()
         pbar.close()
@@ -700,7 +700,7 @@ class BinanceManager:
                                     amount=float(deposit['amount']),
                                     auto_commit=False)
             pbar.update()
-            start_time += delta_jump
+            start_time += delta_jump + 1  # endTime is included in the previous return, so we have to add 1
             if len(deposits):
                 self.db.commit()
         pbar.close()
@@ -795,11 +795,13 @@ class BinanceManager:
             return getattr(self.client, method_name)(**params)
         except BinanceAPIException as err:
             if err.code == -1003:  # API rate Limits
-                wait_time = float(err.response.headers['Retry-After'])
+                # wait_time = float(err.response.headers['Retry-After']) it seems to be always 0, so unusable
+                wait_time = 1 + 60 - datetime.datetime.now().timestamp() % 60  # number of seconds until next minute
                 if err.response.status_code == 418:  # ban
                     self.logger.error(f"API calls resulted in a ban, retry in {wait_time} seconds")
                     raise err
-                self.logger.info(f"API calls resulted in a breach of rate limits, will retry after {wait_time} seconds")
-                time.sleep(wait_time + 1)
+                self.logger.info(f"API calls resulted in a breach of rate limits,"
+                                 f" will retry after {wait_time:.2f} seconds")
+                time.sleep(wait_time)
                 return self._call_binance_client(method_name, params, retry_count + 1)
             raise err
