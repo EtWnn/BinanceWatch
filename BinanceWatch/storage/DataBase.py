@@ -127,7 +127,7 @@ class DataBase:
         execution_cmd = self._add_order(execution_cmd, order_list=order_list)
         return self._fetch_rows(execution_cmd)
 
-    def get_all_rows(self, table: Table) -> List:
+    def get_all_rows(self, table: Table) -> List[Tuple]:
         """
         Get all the rows of a table
 
