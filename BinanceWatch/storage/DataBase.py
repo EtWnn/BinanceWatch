@@ -9,6 +9,8 @@ from BinanceWatch.utils.paths import get_data_path
 
 class SQLConditionEnum(Enum):
     """
+    Enumeration for SQL comparison operator
+
     https://www.techonthenet.com/sqlite/comparison_operators.php
     """
     equal = '='
@@ -25,6 +27,12 @@ class DataBase:
     """
 
     def __init__(self, name: str):
+        """
+        Initialise a DataBase instance
+
+        :param name: name of the database
+        :type name: str
+        """
         self.name = name
         self.logger = LoggerGenerator.get_logger(self.name)
         self.save_path = get_data_path() / f"{name}.db"
@@ -44,18 +52,21 @@ class DataBase:
 
     def close(self):
         """
-        close the connection with the sqlite3 database
+        Close the connection with the sqlite3 database
 
         :return: None
         :rtype: None
         """
         self.db_conn.close()
 
-    def _fetch_rows(self, execution_cmd: str):
+    def _fetch_rows(self, execution_cmd: str) -> List[Tuple]:
         """
-        execute a command to fetch some rows and return them
+        Execute a command to fetch some rows and return them
+
         :param execution_cmd: the command to execute
-        :return:
+        :type execution_cmd: str
+        :return: list of the table's rows selected by the command
+        :rtype: List[Tuple]
         """
         rows = []
         try:
@@ -71,10 +82,14 @@ class DataBase:
 
     def get_row_by_key(self, table: Table, key_value) -> Optional[Tuple]:
         """
-        get the row identified by a primary key value from a table
-        :param table: table to fetch the row from
-        :param key_value: key value of the row
-        :return: None or the row of value
+        Get the row identified by a primary key value from a table
+
+        :param table: table to fetch the key from
+        :type table: Table
+        :param key_value: value of the primary key
+        :type key_value: Any
+        :return: the raw row of of the table
+        :rtype: Optional[Tuple]
         """
         if table.primary_key is None:
             raise ValueError(f"table {table.name} has no explicit primary key")
@@ -84,12 +99,24 @@ class DataBase:
             return rows[0]
 
     def get_conditions_rows(self, table: Table,
-                            selection: Optional[Union[str, List[str]]] = None,
+                            selection: Union[str, List[str]] = '*',
                             conditions_list: Optional[List[Tuple[str, SQLConditionEnum, Any]]] = None,
-                            order_list: Optional[List[str]] = None) -> List:
-        if selection is None:
-            selection = '*'
-        elif isinstance(selection, List):
+                            order_list: Optional[List[str]] = None) -> List[Tuple]:
+        """
+        Select rows with optional conditions and optional order
+
+        :param table: table to select the rows from
+        :type table: Table
+        :param selection: list of column or SQL type selection
+        :type selection: Union[str, List[str]]
+        :param conditions_list: list of conditions to select the row
+        :type conditions_list: Optional[List[Tuple[str, SQLConditionEnum, Any]]]
+        :param order_list: List of SQL type order by
+        :type order_list: Optional[List[str]]
+        :return: the selected rows
+        :rtype: List[Tuple]
+        """
+        if isinstance(selection, List):
             selection = ','.join(selection)
         if conditions_list is None:
             conditions_list = []
@@ -101,9 +128,32 @@ class DataBase:
         return self._fetch_rows(execution_cmd)
 
     def get_all_rows(self, table: Table) -> List:
+        """
+        Get all the rows of a table
+
+        :param table: table to get the rows from
+        :type table: Table
+        :return: all the rows of the table
+        :rtype: List[Tuple]
+        """
         return self.get_conditions_rows(table)
 
     def add_row(self, table: Table, row: Tuple, auto_commit: bool = True, update_if_exists: bool = False):
+        """
+        Add a row to a table
+
+        :param table: table to add a row to
+        :type table: Table
+        :param row: values to add to the database
+        :type row: Tuple
+        :param auto_commit: if the database state should be saved after the changes
+        :type auto_commit:  bool
+        :param update_if_exists: if an integrity error is raised and this parameter is true,
+            will update the existing row
+        :type update_if_exists: bool
+        :return: None
+        :rtype: None
+        """
         row_s = ", ".join(f"'{v}'" for v in row)
         row_s = f'({row_s})'
         execution_order = f"INSERT INTO {table.name} VALUES {row_s}"
@@ -126,12 +176,39 @@ class DataBase:
                 raise err
 
     def add_rows(self, table: Table, rows: List[Tuple], auto_commit: bool = True, update_if_exists: bool = False):
+        """
+        Add several rows to a table
+
+        :param table: table to add a row to
+        :type table: Table
+        :param rows: list of values to add to the database
+        :type rows: List[Tuple]
+        :param auto_commit: if the database state should be saved after the changes
+        :type auto_commit:  bool
+        :param update_if_exists: if an integrity error is raised and this parameter is true,
+            will update the existing row
+        :type update_if_exists: bool
+        :return: None
+        :rtype: None
+        """
         for row in rows:
             self.add_row(table, row, auto_commit=False, update_if_exists=update_if_exists)
         if auto_commit:
             self.commit()
 
     def update_row(self, table: Table, row: Tuple, auto_commit=True):
+        """
+        Update the value of a row in a table
+
+        :param table: table to get updated
+        :type table: Table
+        :param row: values to update
+        :type row: Tuple
+        :param auto_commit: if the database state should be saved after the changes
+        :type auto_commit:  bool
+        :return: None
+        :rtype: None
+        """
         row_s = ", ".join(f"{n} = {v}" for n, v in zip(table.columns_names, row))
         execution_order = f"UPDATE {table.name} SET {row_s} WHERE {table.primary_key} = {row[0]}"
         self.db_cursor.execute(execution_order)
@@ -140,9 +217,12 @@ class DataBase:
 
     def create_table(self, table: Table):
         """
-        create a table in the database
+        Create a table in the database
+
         :param table: Table instance with the config of the table to create
-        :return:
+        :type table: Table
+        :return: None
+        :rtype: None
         """
         create_cmd = self.get_create_cmd(table)
         self.db_cursor.execute(create_cmd)
@@ -150,10 +230,10 @@ class DataBase:
 
     def drop_table(self, table: Union[Table, str]):
         """
-         delete a table from the database
+        Delete a table from the database
 
         :param table: table or table name to drop
-        :type table: str or Table instance
+        :type table: Union[Table, str]
         :return: None
         :rtype: None
         """
@@ -165,7 +245,7 @@ class DataBase:
 
     def drop_all_tables(self):
         """
-        drop all the tables existing in the database
+        Drop all the tables existing in the database
 
         :return: None
         :rtype: None
@@ -177,7 +257,7 @@ class DataBase:
 
     def get_all_tables(self) -> List[Tuple]:
         """
-        return all the tables existing in the database
+        Return all the tables existing in the database
 
         :return: tables descriptions
         :rtype: List[Tuple]
@@ -187,19 +267,24 @@ class DataBase:
 
     def commit(self):
         """
-        submit and save the database state
-        :return:
+        Submit and save the database state
+
+        :return: None
+        :rtype: None
         """
         self.db_conn.commit()
 
     @staticmethod
     def _add_conditions(execution_cmd: str, conditions_list: List[Tuple[str, SQLConditionEnum, Any]]):
         """
-        add a list of condition to an SQL command
+        Add a list of condition to an SQL command
+
         :param execution_cmd: SQL command without 'WHERE' statement
         :type execution_cmd: str
-        :param conditions_list:
-        :return:
+        :param conditions_list: List of condition to add to the SQL command
+        :type conditions_list: List[Tuple[str, SQLConditionEnum, Any]]
+        :return: the augmented command
+        :rtype: str
         """
         if len(conditions_list):
             add_cmd = ' WHERE'
@@ -212,14 +297,14 @@ class DataBase:
     @staticmethod
     def _add_order(execution_cmd: str, order_list: List[str]):
         """
-        add an order specification to an SQL command
+        Add an order specification to an SQL command
 
         :param execution_cmd: SQL command without 'ORDER BY' statement
         :type execution_cmd: str
-        :param order_list:
-        :type order_list:
-        :return:
-        :rtype:
+        :param order_list: SQL order
+        :type order_list: List[str]
+        :return: the augmented command
+        :rtype: str
         """
         if len(order_list):
             add_cmd = ' ORDER BY'
@@ -230,11 +315,14 @@ class DataBase:
             return execution_cmd
 
     @staticmethod
-    def get_create_cmd(table: Table):
+    def get_create_cmd(table: Table) -> str:
         """
-        return the command in string format to create a table in the database
+        Return the command in string format to create a table in the database
+
         :param table: Table instance with the config if the table to create
+        :type table: Table
         :return: execution command for the table creation
+        :rtype: str
         """
         cmd = ""
         if table.primary_key is not None:
