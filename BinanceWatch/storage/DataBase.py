@@ -95,7 +95,7 @@ class DataBase:
     def get_conditions_rows(self, table: Table,
                             selection: Union[str, List[str]] = '*',
                             conditions_list: Optional[List[Tuple[str, SQLConditionEnum, Any]]] = None,
-                            order_list: Optional[List[str]] = None) -> List:
+                            order_list: Optional[List[str]] = None) -> List[Tuple]:
         """
         Select rows with optional conditions and optional order
 
@@ -140,9 +140,10 @@ class DataBase:
         :type table: Table
         :param row: values to add to the database
         :type row: Tuple
-        :param auto_commit: if the database state should be saved after the change
+        :param auto_commit: if the database state should be saved after the changes
         :type auto_commit:  bool
-        :param update_if_exists: if an integrity error is raised and this parameter is true, will update the row
+        :param update_if_exists: if an integrity error is raised and this parameter is true,
+            will update the existing row
         :type update_if_exists: bool
         :return: None
         :rtype: None
@@ -176,9 +177,10 @@ class DataBase:
         :type table: Table
         :param rows: list of values to add to the database
         :type rows: List[Tuple]
-        :param auto_commit: if the database state should be saved after the change
+        :param auto_commit: if the database state should be saved after the changes
         :type auto_commit:  bool
-        :param update_if_exists: if an integrity error is raised and this parameter is true, will update the row
+        :param update_if_exists: if an integrity error is raised and this parameter is true,
+            will update the existing row
         :type update_if_exists: bool
         :return: None
         :rtype: None
@@ -196,7 +198,7 @@ class DataBase:
         :type table: Table
         :param row: values to update
         :type row: Tuple
-        :param auto_commit: if the database state should be saved after the change
+        :param auto_commit: if the database state should be saved after the changes
         :type auto_commit:  bool
         :return: None
         :rtype: None
@@ -289,7 +291,7 @@ class DataBase:
     @staticmethod
     def _add_order(execution_cmd: str, order_list: List[str]):
         """
-        add an order specification to an SQL command
+        Add an order specification to an SQL command
 
         :param execution_cmd: SQL command without 'ORDER BY' statement
         :type execution_cmd: str
