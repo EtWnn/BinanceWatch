@@ -27,6 +27,12 @@ class DataBase:
     """
 
     def __init__(self, name: str):
+        """
+        Initialise a DataBase instance
+
+        :param name: name of the database
+        :type name: str
+        """
         self.name = name
         self.logger = LoggerGenerator.get_logger(self.name)
         self.save_path = get_data_path() / f"{name}.db"
