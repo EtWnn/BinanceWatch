@@ -64,6 +64,19 @@ class BinanceManager:
         self.update_cross_margin_repays()
         self.update_universal_transfers(transfer_filter='MARGIN')
 
+    def update_isolated_margin(self):
+        """
+        call all update methods related to isolated margin spot account
+
+        :return: None
+        :rtype: None
+        """
+        self.update_all_isolated_margin_trades()
+        # TODO loans
+        # TODO interests
+        # TODO repays
+        # TODO transfers
+
     def update_lending(self):
         """
         call all update methods related to lending activities
@@ -361,7 +374,7 @@ class BinanceManager:
             client_params = {
                 'symbol': symbol,
                 'fromId': last_trade_id + 1,
-                'isIsolated':is_isolated,
+                'isIsolated': is_isolated,
                 'limit': limit
             }
             new_trades = self._call_binance_client('get_margin_trades', client_params)
@@ -408,6 +421,37 @@ class BinanceManager:
             self.update_margin_symbol_trades(asset=symbol_info['base'],
                                              ref_asset=symbol_info['quote'],
                                              limit=limit)
+            pbar.update()
+        pbar.close()
+
+    def update_all_isolated_margin_trades(self, limit: int = 1000):
+        """
+        This update the isolated margin trades in the database for every trading pairs
+
+        :param limit: max size of each trade requests
+        :type limit: int
+        :return: None
+        :rtype: None
+        """
+        client_params = {
+            'method': 'get',
+            'path': 'margin/isolated/allPairs',
+            'data': {},
+            'signed': True
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
+
+        pbar = tqdm(total=len(symbols_info))
+        for symbol_info in symbols_info:
+            pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
+            try:
+                self.update_margin_symbol_trades(asset=symbol_info['base'],
+                                                 ref_asset=symbol_info['quote'],
+                                                 limit=limit,
+                                                 is_isolated=True)
+            except BinanceAPIException as e:
+                if e.code != -11001:  # -11001 means that this isolated pair has never been used
+                    raise e
             pbar.update()
         pbar.close()
 
