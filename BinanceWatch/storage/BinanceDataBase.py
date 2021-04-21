@@ -233,13 +233,11 @@ class BinanceDataBase(DataBase):
             return default
         return result
 
-    def add_repay(self, margin_type: str, tx_id: int, repay_time: int, asset: str, principal: float,
-                  interest: float, auto_commit: bool = True):
+    def add_repay(self, tx_id: int, repay_time: int, asset: str, principal: float,
+                  interest: float, isolated_symbol: Optional[str] = None, auto_commit: bool = True):
         """
         add a repay to the database
 
-        :param margin_type: either 'cross' or 'isolated'
-        :type margin_type:
         :param tx_id: binance id for the transaction (uniqueness?)
         :type tx_id: int
         :param repay_time: millitstamp of the operation
@@ -249,31 +247,35 @@ class BinanceDataBase(DataBase):
         :param principal: principal amount repaid for the loan
         :type principal: float
         :param interest: amount of interest repaid for the loan
-        :type interest:
+        :type interest: float
+        :param isolated_symbol: for isolated margin, provided the trading symbol otherwise it will be counted a cross
+            margin data
+        :type isolated_symbol: Optional[str]
         :param auto_commit: if the database should commit the change made, default True
         :type auto_commit: bool
         :return: None
         :rtype: None
         """
-        if margin_type == 'cross':
+        if isolated_symbol is None:
             table = tables.CROSS_MARGIN_REPAY_TABLE
-        elif margin_type == 'isolated':
-            raise NotImplementedError
+            row = (tx_id, repay_time, asset, principal, interest)
         else:
-            raise ValueError(f"margin type should be 'cross' or 'isolated' but {margin_type} was received")
+            row = (tx_id, repay_time, isolated_symbol, asset, principal, interest)
+            table = tables.ISOLATED_MARGIN_REPAY_TABLE
 
-        row = (tx_id, repay_time, asset, principal, interest)
         self.add_row(table, row, auto_commit=auto_commit)
 
-    def get_repays(self, margin_type: str, asset: Optional[str] = None, start_time: Optional[int] = None,
-                   end_time: Optional[int] = None):
+    def get_repays(self, margin_type: str, asset: Optional[str] = None, isolated_symbol: Optional[str] = None,
+                   start_time: Optional[int] = None, end_time: Optional[int] = None):
         """
         return repays stored in the database. Asset type and time filters can be used
 
         :param margin_type: either 'cross' or 'isolated'
-        :type margin_type:
+        :type margin_type: str
         :param asset: fetch only repays of this asset
         :type asset: Optional[str]
+        :param isolated_symbol: only for isolated margin, provide the trading symbol
+        :type isolated_symbol: Optional[str]
         :param start_time: fetch only repays after this millistamp
         :type start_time: Optional[int]
         :param end_time: fetch only repays before this millistamp
@@ -283,6 +285,7 @@ class BinanceDataBase(DataBase):
 
         .. code-block:: python
 
+            # cross margin
             [
                 (8289451654,        # transaction id
                 1559415215400,      # time
@@ -290,15 +293,30 @@ class BinanceDataBase(DataBase):
                 145.5491462,        # principal
                 0.51561),           # interest
             ]
+
+            # isolated margin
+            [
+                (8289451654,        # transaction id
+                1559415215400,      # time
+                'BTCUSDT',          # isolated symbol
+                'USDT',             # asset
+                145.5491462,        # principal
+                0.51561),           # interest
+            ]
         """
+        conditions_list = []
+
         if margin_type == 'cross':
             table = tables.CROSS_MARGIN_REPAY_TABLE
         elif margin_type == 'isolated':
-            raise NotImplementedError
+            table = tables.ISOLATED_MARGIN_REPAY_TABLE
+            if isolated_symbol is not None:
+                conditions_list.append((table.isolated_symbol,
+                                        SQLConditionEnum.equal,
+                                        isolated_symbol))
         else:
             raise ValueError(f"margin type should be 'cross' or 'isolated' but {margin_type} was received")
 
-        conditions_list = []
         if asset is not None:
             conditions_list.append((table.asset,
                                     SQLConditionEnum.equal,
@@ -313,28 +331,31 @@ class BinanceDataBase(DataBase):
                                     end_time))
         return self.get_conditions_rows(table, conditions_list=conditions_list)
 
-    def get_last_repay_time(self, asset: str, margin_type: str) -> int:
+    def get_last_repay_time(self, asset: str, isolated_symbol: Optional[str] = None) -> int:
         """
         return the latest time when a repay was made on a defined asset
         If None, return the millistamp corresponding to 2017/01/01
 
         :param asset: name of the asset repaid
         :type asset: str
-        :param margin_type: either 'cross' or 'isolated'
-        :type margin_type:
+        :param isolated_symbol: only for isolated margin, provide the trading symbol (otherwise cross data are returned)
+        :type isolated_symbol: Optional[str]
         :return: millistamp
         :rtype: int
         """
-        if margin_type == 'cross':
+        conditions_list = []
+        if isolated_symbol is None:
             table = tables.CROSS_MARGIN_REPAY_TABLE
-        elif margin_type == 'isolated':
-            raise NotImplementedError
         else:
-            raise ValueError(f"margin type should be 'cross' or 'isolated' but {margin_type} was received")
+            table = tables.ISOLATED_MARGIN_REPAY_TABLE
+            conditions_list.append((table.symbol,
+                                    SQLConditionEnum.equal,
+                                    isolated_symbol))
 
-        conditions_list = [(table.asset,
-                            SQLConditionEnum.equal,
-                            asset)]
+        conditions_list.append((table.asset,
+                                SQLConditionEnum.equal,
+                                asset))
+
         selection = f"MAX({table.repayTime})"
         result = self.get_conditions_rows(table,
                                           selection=selection,

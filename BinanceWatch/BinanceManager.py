@@ -222,7 +222,7 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def update_margin_asset_repay(self, asset: str, isolated_symbol=''):
+    def update_margin_asset_repay(self, asset: str, isolated_symbol: Optional[str] = None):
         """
         update the repays database for a specified asset.
 
@@ -232,13 +232,13 @@ class BinanceManager:
 
         :param asset: asset for the repays
         :type asset: str
-        :param isolated_symbol: the symbol must be specified of isolated margin, otherwise cross margin data is returned
-        :type isolated_symbol: str
+        :param isolated_symbol: only for isolated margin, provide the trading symbol. Otherwise cross margin data will
+            be updated
+        :type isolated_symbol: Optional[str]
         :return: None
         :rtype: None
         """
-        margin_type = 'cross' if isolated_symbol == '' else 'isolated'
-        latest_time = self.db.get_last_repay_time(asset=asset, margin_type=margin_type)
+        latest_time = self.db.get_last_repay_time(asset=asset, isolated_symbol=isolated_symbol)
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
         while True:
@@ -247,19 +247,20 @@ class BinanceManager:
                 'current': current,
                 'startTime': latest_time + 1000,
                 'archived': archived,
-                'isolatedSymbol': isolated_symbol,
                 'size': 100
             }
+            if isolated_symbol is not None:
+                client_params['isolatedSymbol'] = isolated_symbol
             repays = self._call_binance_client('get_margin_repay_details', client_params)
 
             for repay in repays['rows']:
                 if repay['status'] == 'CONFIRMED':
-                    self.db.add_repay(margin_type=margin_type,
-                                      tx_id=repay['txId'],
+                    self.db.add_repay(tx_id=repay['txId'],
                                       repay_time=repay['timestamp'],
                                       asset=repay['asset'],
                                       principal=repay['principal'],
                                       interest=repay['interest'],
+                                      isolated_symbol=repay.get('isolatedSymbol', None),
                                       auto_commit=False)
 
             if len(repays['rows']):
@@ -268,7 +269,7 @@ class BinanceManager:
             elif archived:  # switching to non archived repays
                 current = 1
                 archived = False
-                latest_time = self.db.get_last_repay_time(asset=asset, margin_type=margin_type)
+                latest_time = self.db.get_last_repay_time(asset=asset)
             else:
                 break
 
