@@ -9,6 +9,8 @@ Contents
    overview
    binance_manager
    binance_database
+   database
+   tables
 
 
 

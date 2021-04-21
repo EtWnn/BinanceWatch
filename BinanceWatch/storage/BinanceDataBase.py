@@ -12,6 +12,12 @@ class BinanceDataBase(DataBase):
     """
 
     def __init__(self, name: str = 'binance_db'):
+        """
+        Initialise a binance database instance
+
+        :param name: name of the database
+        :type name: str
+        """
         super().__init__(name)
 
     def add_universal_transfer(self, transfer_id: int, transfer_type: str, transfer_time: int, asset: str,
