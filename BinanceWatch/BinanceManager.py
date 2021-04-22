@@ -60,7 +60,7 @@ class BinanceManager:
         """
         self.update_all_cross_margin_trades()
         self.update_cross_margin_loans()
-        self.update_cross_margin_interests()
+        self.update_margin_interests()
         self.update_cross_margin_repays()
         self.update_universal_transfers(transfer_filter='MARGIN')
 
@@ -75,7 +75,7 @@ class BinanceManager:
 
         self.update_isolated_margin_trades(symbols_info)
         self.update_isolated_margin_loans(symbols_info)
-        # TODO interests
+        self.update_isolated_margin_interests(symbols_info)
         self.update_isolated_margin_repays(symbols_info)
         # TODO transfers
 
@@ -201,22 +201,59 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def update_cross_margin_interests(self):
+    def update_isolated_margin_interests(self, symbols_info: Optional[List[Dict]] = None):
         """
-        update the interests for all cross margin assets
+        Update the interests for isolated margin assets
+
+        :param symbols_info: details on the symbols to fetch repays on. Each dictionary needs the fields 'asset' and
+            'ref_asset'. If not provided, will update all isolated symbols.
+        :type symbols_info: Optional[List[Dict]]
+        :return: None
+        :rtype: None
+        """
+        asset_key = 'asset'
+        ref_asset_key = 'ref_asset'
+        if symbols_info is None:
+            symbols_info = self.get_margin_symbol_info(isolated=True)
+            asset_key = 'base'
+            ref_asset_key = 'quote'
+
+        pbar = tqdm(total=len(symbols_info))
+        for symbol_info in symbols_info:
+            asset = symbol_info[asset_key]
+            ref_asset = symbol_info[ref_asset_key]
+            symbol = symbol_info.get('symbol', f"{asset}{ref_asset}")
+
+            pbar.set_description(f"fetching isolated margin interests for {symbol}")
+            self.update_margin_interests(isolated_symbol=symbol, show_pbar=False)
+            pbar.update()
+
+        pbar.close()
+
+    def update_margin_interests(self, isolated_symbol: Optional[str] = None, show_pbar: bool = True):
+        """
+        Update the interests for all cross margin assets or for a isolated margin symbol if provided.
 
         sources:
         https://binance-docs.github.io/apidocs/spot/en/#query-repay-record-user_data
 
+        :param isolated_symbol: only for isolated margin, provide the trading symbol. Otherwise cross margin data will
+            be updated
+        :type isolated_symbol: Optional[str]
+        :param show_pbar: if the progress bar is displayed
+        :type show_pbar: bool
         :return:
         :rtype:
         """
-        margin_type = 'cross'
-        latest_time = self.db.get_last_margin_interest_time(margin_type)
+        margin_type = 'cross' if isolated_symbol is None else 'isolated'
+        latest_time = self.db.get_last_margin_interest_time(isolated_symbol=isolated_symbol)
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
-        pbar = tqdm()
-        pbar.set_description("fetching cross margin interests")
+        pbar = tqdm(disable=not show_pbar)
+        desc = f"fetching {margin_type} margin interests"
+        if isolated_symbol is not None:
+            desc = desc + f" for {isolated_symbol}"
+        pbar.set_description(desc)
         while True:
             params = {
                 'current': current,
@@ -224,6 +261,8 @@ class BinanceManager:
                 'size': 100,
                 'archived': archived
             }
+            if isolated_symbol is not None:
+                params['isolatedSymbol'] = isolated_symbol
 
             # no built-in method yet in python-binance for margin/interestHistory
             client_params = {
@@ -235,23 +274,23 @@ class BinanceManager:
             interests = self._call_binance_client('_request_margin_api', client_params)
 
             for interest in interests['rows']:
-                self.db.add_margin_interest(margin_type=margin_type,
-                                            interest_time=interest['interestAccuredTime'],
+                self.db.add_margin_interest(interest_time=interest['interestAccuredTime'],
                                             asset=interest['asset'],
                                             interest=interest['interest'],
                                             interest_type=interest['type'],
+                                            isolated_symbol=interest.get('isolatedSymbol'),
                                             auto_commit=False)
 
+            pbar.update()
             if len(interests['rows']):
                 current += 1  # next page
                 self.db.commit()
             elif archived:  # switching to non archived interests
                 current = 1
                 archived = False
-                latest_time = self.db.get_last_margin_interest_time(margin_type)
+                latest_time = self.db.get_last_margin_interest_time(isolated_symbol=isolated_symbol)
             else:
                 break
-            pbar.update()
         pbar.close()
 
     def update_cross_margin_repays(self):
@@ -281,7 +320,7 @@ class BinanceManager:
 
     def update_isolated_margin_repays(self, symbols_info: Optional[List[Dict]] = None):
         """
-        Update the repays for all cross margin assets
+        Update the repays for isolated margin assets
 
         :param symbols_info: details on the symbols to fetch repays on. Each dictionary needs the fields 'asset' and
             'ref_asset'. If not provided, will update all isolated symbols.
