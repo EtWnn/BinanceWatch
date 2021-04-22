@@ -76,7 +76,7 @@ class BinanceManager:
         self.update_isolated_margin_trades(symbols_info)
         # TODO loans
         # TODO interests
-        # TODO repays
+        self.update_isolated_margin_repays(symbols_info)
         # TODO transfers
 
     def update_lending(self):
@@ -279,28 +279,35 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def update_isolated_margin_repays(self):
+    def update_isolated_margin_repays(self, symbols_info: Optional[List[Dict]] = None):
         """
         update the repays for all cross margin assets
 
+        :param symbols_info: details on the symbols to fetch trades on. Each dictionary needs the fields 'asset' and
+            'ref_asset'. If not provided, will update all isolated symbols.
+        :type symbols_info: Optional[List[Dict]]
         :return: None
         :rtype: None
         """
-        client_params = {
-            'method': 'get',
-            'path': 'margin/allPairs',
-            'data': {}
-        }
-        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
-        assets = set()
-        for symbol_info in symbols_info:
-            assets.add(symbol_info['base'])
-            assets.add(symbol_info['quote'])
+        asset_key = 'asset'
+        ref_asset_key = 'ref_asset'
+        if symbols_info is None:
+            symbols_info = self.get_margin_symbol_info(isolated=True)
+            asset_key = 'base'
+            ref_asset_key = 'quote'
 
-        pbar = tqdm(total=len(assets))
-        for asset in assets:
-            pbar.set_description(f"fetching {asset} cross margin repays")
-            self.update_margin_asset_repay(asset=asset)
+        pbar = tqdm(total=2 * len(symbols_info))
+        for symbol_info in symbols_info:
+            asset = symbol_info[asset_key]
+            ref_asset = symbol_info[ref_asset_key]
+            symbol = symbol_info.get('symbol', f"{asset}{ref_asset}")
+
+            pbar.set_description(f"fetching {asset} isolated margin repays for {symbol}")
+            self.update_margin_asset_repay(asset=asset, isolated_symbol=symbol)
+            pbar.update()
+
+            pbar.set_description(f"fetching {ref_asset} isolated margin repays for {symbol}")
+            self.update_margin_asset_repay(asset=ref_asset, isolated_symbol=symbol)
             pbar.update()
         pbar.close()
 
