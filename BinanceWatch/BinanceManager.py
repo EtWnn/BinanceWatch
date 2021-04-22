@@ -1,7 +1,7 @@
 import datetime
 import math
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Union
 
 import dateparser
 from binance.client import Client
@@ -71,7 +71,9 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        self.update_all_isolated_margin_trades()
+        symbols_info = self.get_margin_symbol_info(isolated=True)
+
+        self.update_isolated_margin_trades(symbols_info)
         # TODO loans
         # TODO interests
         # TODO repays
@@ -87,6 +89,61 @@ class BinanceManager:
         self.update_lending_interests()
         self.update_lending_purchases()
         self.update_lending_redemptions()
+
+    def get_margin_symbol_info(self, isolated: bool) -> List[Dict]:
+        """
+        Return information about margin symbols as provided by the binance API
+
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#get-all-isolated-margin-symbol-user_data
+        https://binance-docs.github.io/apidocs/spot/en/#get-all-cross-margin-pairs-market_data
+
+        :param isolated: If isolated data are to be returned, otherwise it will be cross margin data
+        :type isolated: bool
+        :return: Info on the trading symbols
+        :rtype: List[Dict]
+
+        .. code-block:: python
+
+            # cross margin
+            [
+                {
+                    'id': 351637150141315861,
+                    'symbol': 'BNBBTC',
+                    'base': 'BNB',
+                    'quote': 'BTC',
+                    'isMarginTrade': True,
+                    'isBuyAllowed': True,
+                    'isSellAllowed': True
+                },
+                ...
+            ]
+
+            # isolated margin
+            [
+                {
+                    'symbol': '1INCHBTC',
+                    'base': '1INCH',
+                    'quote': 'BTC',
+                    'isMarginTrade': True,
+                    'isBuyAllowed': True,
+                    'isSellAllowed': True
+                },
+                ...
+            ]
+
+        """
+        client_params = {
+            'method': 'get',
+            'data': {}
+        }
+        if isolated:
+            client_params['path'] = 'margin/isolated/allPairs'
+            client_params['signed'] = True
+        else:
+            client_params['path'] = 'margin/allPairs'
+        return self._call_binance_client('_request_margin_api', client_params)
 
     def update_universal_transfers(self, transfer_filter: Optional[str] = None):
         """
@@ -198,6 +255,31 @@ class BinanceManager:
         pbar.close()
 
     def update_cross_margin_repays(self):
+        """
+        update the repays for all cross margin assets
+
+        :return: None
+        :rtype: None
+        """
+        client_params = {
+            'method': 'get',
+            'path': 'margin/allPairs',
+            'data': {}
+        }
+        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
+        assets = set()
+        for symbol_info in symbols_info:
+            assets.add(symbol_info['base'])
+            assets.add(symbol_info['quote'])
+
+        pbar = tqdm(total=len(assets))
+        for asset in assets:
+            pbar.set_description(f"fetching {asset} cross margin repays")
+            self.update_margin_asset_repay(asset=asset)
+            pbar.update()
+        pbar.close()
+
+    def update_isolated_margin_repays(self):
         """
         update the repays for all cross margin assets
 
@@ -425,30 +507,34 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def update_all_isolated_margin_trades(self, limit: int = 1000):
+    def update_isolated_margin_trades(self, symbols_info: Optional[List[Dict]] = None):
         """
         This update the isolated margin trades in the database for every trading pairs
 
-        :param limit: max size of each trade requests
-        :type limit: int
+        :param symbols_info: details on the symbols to fetch trades on. Each dictionary needs the fields 'asset' and
+            'ref_asset'. If not provided, will update all isolated symbols.
+        :type symbols_info: Optional[List[Dict]]
         :return: None
         :rtype: None
         """
-        client_params = {
-            'method': 'get',
-            'path': 'margin/isolated/allPairs',
-            'data': {},
-            'signed': True
-        }
-        symbols_info = self._call_binance_client('_request_margin_api', client_params)  # not built-in yet
+        asset_key = 'asset'
+        ref_asset_key = 'ref_asset'
+        if symbols_info is None:
+            symbols_info = self.get_margin_symbol_info(isolated=True)
+            asset_key = 'base'
+            ref_asset_key = 'quote'
 
         pbar = tqdm(total=len(symbols_info))
         for symbol_info in symbols_info:
-            pbar.set_description(f"fetching {symbol_info['symbol']} cross margin trades")
+            asset = symbol_info[asset_key]
+            ref_asset = symbol_info[ref_asset_key]
+            symbol = symbol_info.get('symbol', f"{asset}{ref_asset}")
+            pbar.set_description(f"fetching {symbol} isolated margin trades")
+
             try:
-                self.update_margin_symbol_trades(asset=symbol_info['base'],
-                                                 ref_asset=symbol_info['quote'],
-                                                 limit=limit,
+                self.update_margin_symbol_trades(asset=asset,
+                                                 ref_asset=ref_asset,
+                                                 limit=1000,
                                                  is_isolated=True)
             except BinanceAPIException as e:
                 if e.code != -11001:  # -11001 means that this isolated pair has never been used
@@ -822,7 +908,8 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def _call_binance_client(self, method_name: str, params: Optional[Dict] = None, retry_count: int = 0):
+    def _call_binance_client(self, method_name: str, params: Optional[Dict] = None,
+                             retry_count: int = 0) -> Union[Dict, List]:
         """
         This method is used to handle rate limits: if a rate limits is breached, it will wait the necessary time
         to call again the API.
@@ -834,7 +921,7 @@ class BinanceManager:
         :param retry_count: internal use only to count the number of retry if rate limits are breached
         :type retry_count: int
         :return: response of binance.Client method
-        :rtype: Dict
+        :rtype: Union[Dict, List]
         """
         if params is None:
             params = dict()
