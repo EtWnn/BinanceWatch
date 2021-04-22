@@ -74,7 +74,7 @@ class BinanceManager:
         symbols_info = self.get_margin_symbol_info(isolated=True)
 
         self.update_isolated_margin_trades(symbols_info)
-        # TODO loans
+        self.update_isolated_margin_loans(symbols_info)
         # TODO interests
         self.update_isolated_margin_repays(symbols_info)
         # TODO transfers
@@ -281,9 +281,9 @@ class BinanceManager:
 
     def update_isolated_margin_repays(self, symbols_info: Optional[List[Dict]] = None):
         """
-        update the repays for all cross margin assets
+        Update the repays for all cross margin assets
 
-        :param symbols_info: details on the symbols to fetch trades on. Each dictionary needs the fields 'asset' and
+        :param symbols_info: details on the symbols to fetch repays on. Each dictionary needs the fields 'asset' and
             'ref_asset'. If not provided, will update all isolated symbols.
         :type symbols_info: Optional[List[Dict]]
         :return: None
@@ -387,7 +387,40 @@ class BinanceManager:
             pbar.update()
         pbar.close()
 
-    def update_margin_asset_loans(self, asset: str, isolated_symbol=''):
+    def update_isolated_margin_loans(self, symbols_info: Optional[List[Dict]] = None):
+        """
+        Update the loans for isolated margin assets
+
+        :param symbols_info: details on the symbols to fetch loans on. Each dictionary needs the fields 'asset' and
+            'ref_asset'. If not provided, will update all isolated symbols.
+        :type symbols_info: Optional[List[Dict]]
+        :return: None
+        :rtype: None
+        """
+        asset_key = 'asset'
+        ref_asset_key = 'ref_asset'
+        if symbols_info is None:
+            symbols_info = self.get_margin_symbol_info(isolated=True)
+            asset_key = 'base'
+            ref_asset_key = 'quote'
+
+        pbar = tqdm(total=2 * len(symbols_info))
+        for symbol_info in symbols_info:
+            asset = symbol_info[asset_key]
+            ref_asset = symbol_info[ref_asset_key]
+            symbol = symbol_info.get('symbol', f"{asset}{ref_asset}")
+
+            pbar.set_description(f"fetching {asset} isolated margin loans for {symbol}")
+            self.update_margin_asset_loans(asset=asset, isolated_symbol=symbol)
+            pbar.update()
+
+            pbar.set_description(f"fetching {ref_asset} isolated margin loans for {symbol}")
+            self.update_margin_asset_loans(asset=ref_asset, isolated_symbol=symbol)
+            pbar.update()
+
+        pbar.close()
+
+    def update_margin_asset_loans(self, asset: str, isolated_symbol: Optional[str] = None):
         """
         update the loans database for a specified asset.
 
@@ -397,13 +430,13 @@ class BinanceManager:
 
         :param asset: asset for the loans
         :type asset: str
-        :param isolated_symbol: the symbol must be specified of isolated margin, otherwise cross margin data is returned
-        :type isolated_symbol: str
+        :param isolated_symbol: only for isolated margin, provide the trading symbol. Otherwise cross margin data will
+            be updated
+        :type isolated_symbol: Optional[str]
         :return: None
         :rtype: None
         """
-        margin_type = 'cross' if isolated_symbol == '' else 'isolated'
-        latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+        latest_time = self.db.get_last_loan_time(asset=asset, isolated_symbol=isolated_symbol)
         archived = 1000 * time.time() - latest_time > 1000 * 3600 * 24 * 30 * 3
         current = 1
         while True:
@@ -412,18 +445,19 @@ class BinanceManager:
                 'current': current,
                 'startTime': latest_time + 1000,
                 'archived': archived,
-                'isolatedSymbol': isolated_symbol,
                 'size': 100
             }
+            if isolated_symbol is not None:
+                client_params['isolatedSymbol'] = isolated_symbol
             loans = self._call_binance_client('get_margin_loan_details', client_params)
 
             for loan in loans['rows']:
                 if loan['status'] == 'CONFIRMED':
-                    self.db.add_loan(margin_type=margin_type,
-                                     tx_id=loan['txId'],
+                    self.db.add_loan(tx_id=loan['txId'],
                                      loan_time=loan['timestamp'],
                                      asset=loan['asset'],
                                      principal=loan['principal'],
+                                     isolated_symbol=loan.get('isolatedSymbol'),
                                      auto_commit=False)
 
             if len(loans['rows']):
@@ -432,7 +466,7 @@ class BinanceManager:
             elif archived:  # switching to non archived loans
                 current = 1
                 archived = False
-                latest_time = self.db.get_last_loan_time(asset=asset, margin_type=margin_type)
+                latest_time = self.db.get_last_loan_time(asset=asset, isolated_symbol=isolated_symbol)
             else:
                 break
 
@@ -696,14 +730,14 @@ class BinanceManager:
         for d in dusts['rows']:
             for sub_dust in d['logs']:
                 date_time = dateparser.parse(sub_dust['operateTime'] + 'Z')
-                self.db.add_dust(tran_id=sub_dust['tranId'],
-                                 time=datetime_to_millistamp(date_time),
-                                 asset=sub_dust['fromAsset'],
-                                 asset_amount=sub_dust['amount'],
-                                 bnb_amount=sub_dust['transferedAmount'],
-                                 bnb_fee=sub_dust['serviceChargeAmount'],
-                                 auto_commit=False
-                                 )
+                self.db.add_spot_dust(tran_id=sub_dust['tranId'],
+                                      time=datetime_to_millistamp(date_time),
+                                      asset=sub_dust['fromAsset'],
+                                      asset_amount=sub_dust['amount'],
+                                      bnb_amount=sub_dust['transferedAmount'],
+                                      bnb_fee=sub_dust['serviceChargeAmount'],
+                                      auto_commit=False
+                                      )
             pbar.update()
         self.db.commit()
         pbar.close()
