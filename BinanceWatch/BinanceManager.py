@@ -71,13 +71,23 @@ class BinanceManager:
         :return: None
         :rtype: None
         """
-        symbols_info = self.get_margin_symbol_info(isolated=True)
+        self.update_isolated_margin_transfers()  # fetch transfers across all isolated symbols
+
+        # we will now update only the isolated symbols that have been funded
+        transfers = self.db.get_isolated_transfers()
+        symbols_info = []
+        for _, _, _, symbol, token, _ in transfers:
+            if symbol.startswith(token):
+                asset, ref_asset = token, symbol[len(token):]
+            else:
+                asset, ref_asset = symbol[:-len(token)], token
+            symbols_info.append({'asset': asset, 'ref_asset': ref_asset, 'symbol': symbol})
 
         self.update_isolated_margin_trades(symbols_info)
         self.update_isolated_margin_loans(symbols_info)
         self.update_isolated_margin_interests(symbols_info)
         self.update_isolated_margin_repays(symbols_info)
-        self.update_isolated_margin_transfers(symbols_info)
+
 
     def update_lending(self):
         """
