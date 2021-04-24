@@ -119,6 +119,104 @@ class BinanceDataBase(DataBase):
             return default
         return result
 
+    def add_isolated_transfer(self, transfer_id: int, transfer_type: str, transfer_time: int, isolated_symbol: str,
+                              asset: str, amount: float, auto_commit: bool = True):
+        """
+        Add a universal transfer to the database
+
+        :param transfer_id: id of the transfer
+        :type transfer_id:  int
+        :param transfer_type: enum of the transfer type (ex: 'MAIN_MARGIN')
+        :type transfer_type: str
+        :param transfer_time: millistamp of the operation
+        :type transfer_time: int
+        :param isolated_symbol: isolated symbol that received or sent the transfer
+        :type isolated_symbol: str
+        :param asset: asset that got transferred
+        :type asset: str
+        :param amount: amount transferred
+        :type amount: float
+        :param auto_commit: if the database should commit the change made, default True
+        :type auto_commit: bool
+        :return: None
+        :rtype: None
+        """
+        table = tables.ISOLATED_MARGIN_TRANSFER_TABLE
+
+        row = (transfer_id, transfer_type, transfer_time, isolated_symbol, asset, amount)
+        self.add_row(table, row, auto_commit=auto_commit)
+
+    def get_isolated_transfers(self, isolated_symbol: Optional[str] = None, start_time: Optional[int] = None,
+                               end_time: Optional[int] = None):
+        """
+        Return isolated transfers stored in the database. isolated_symbol and time filters can be used
+
+        :param isolated_symbol: for isolated margin, provided the trading symbol otherwise it will be counted a cross
+            margin data
+        :type isolated_symbol: Optional[str]
+        :param start_time: fetch only transfers after this millistamp
+        :type start_time: Optional[int]
+        :param end_time: fetch only transfers before this millistamp
+        :type end_time: Optional[int]
+        :return: The raw rows selected as saved in the database
+        :rtype: List[Tuple]
+
+        .. code-block:: python
+
+            [
+                (1206491332,        # transfer id
+                'IN',               # transfer type (IN or OUT)
+                1589121841000,      # time
+                'BTCBUSD',          # isolated symbol
+                'BTC',              # asset
+                10.594112),         # amount
+            ]
+        """
+        table = tables.ISOLATED_MARGIN_TRANSFER_TABLE
+
+        conditions_list = []
+        if isolated_symbol is not None:
+            conditions_list.append((table.symbol,
+                                    SQLConditionEnum.equal,
+                                    isolated_symbol))
+        if start_time is not None:
+            conditions_list.append((table.trfTime,
+                                    SQLConditionEnum.greater_equal,
+                                    start_time))
+        if end_time is not None:
+            conditions_list.append((table.trfTime,
+                                    SQLConditionEnum.lower,
+                                    end_time))
+
+        return self.get_conditions_rows(table, conditions_list=conditions_list)
+
+    def get_last_isolated_transfer_time(self, isolated_symbol: str) -> int:
+        """
+        Return the latest time when a isolated margin transfer was made
+        If None, return the millistamp corresponding to 2017/01/01
+
+        :param isolated_symbol: isolated symbol that received or sent the transfers
+        :type isolated_symbol: str
+        :return: millistamp
+        :rtype: int
+        """
+        table = tables.ISOLATED_MARGIN_TRANSFER_TABLE
+        conditions_list = [(table.symbol,
+                            SQLConditionEnum.equal,
+                            isolated_symbol)]
+        selection = f"MAX({table.trfTime})"
+        result = self.get_conditions_rows(table,
+                                          selection=selection,
+                                          conditions_list=conditions_list)
+        default = datetime_to_millistamp(datetime.datetime(2017, 1, 1, tzinfo=datetime.timezone.utc))
+        try:
+            result = result[0][0]
+        except IndexError:
+            return default
+        if result is None:
+            return default
+        return result
+
     def add_margin_interest(self, interest_time: int, asset: str, interest: float, interest_type: str,
                             isolated_symbol: Optional[str] = None, auto_commit: bool = True):
         """

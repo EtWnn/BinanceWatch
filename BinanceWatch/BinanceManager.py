@@ -53,7 +53,7 @@ class BinanceManager:
 
     def update_cross_margin(self):
         """
-        call all update methods related to cross margin spot account
+        call all update methods related to cross margin account
 
         :return: None
         :rtype: None
@@ -66,7 +66,7 @@ class BinanceManager:
 
     def update_isolated_margin(self):
         """
-        call all update methods related to isolated margin spot account
+        call all update methods related to isolated margin account
 
         :return: None
         :rtype: None
@@ -77,7 +77,7 @@ class BinanceManager:
         self.update_isolated_margin_loans(symbols_info)
         self.update_isolated_margin_interests(symbols_info)
         self.update_isolated_margin_repays(symbols_info)
-        # TODO transfers
+        self.update_isolated_margin_transfers(symbols_info)
 
     def update_lending(self):
         """
@@ -200,6 +200,89 @@ class BinanceManager:
                     break
             pbar.update()
         pbar.close()
+
+    def update_isolated_margin_transfers(self, symbols_info: Optional[List[Dict]] = None):
+        """
+        Update the transfers to and from isolated symbols
+
+        :param symbols_info: details on the symbols to fetch repays on. Each dictionary needs the fields 'asset' and
+            'ref_asset'. If not provided, will update all isolated symbols.
+        :type symbols_info: Optional[List[Dict]]
+        :return: None
+        :rtype: None
+        """
+        asset_key = 'asset'
+        ref_asset_key = 'ref_asset'
+        if symbols_info is None:
+            symbols_info = self.get_margin_symbol_info(isolated=True)
+            asset_key = 'base'
+            ref_asset_key = 'quote'
+
+        pbar = tqdm(total=len(symbols_info))
+        for symbol_info in symbols_info:
+            asset = symbol_info[asset_key]
+            ref_asset = symbol_info[ref_asset_key]
+            symbol = symbol_info.get('symbol', f"{asset}{ref_asset}")
+
+            pbar.set_description(f"fetching isolated margin transfers for {symbol}")
+            self.update_isolated_symbol_transfers(isolated_symbol=symbol)
+            pbar.update()
+
+        pbar.close()
+
+    def update_isolated_symbol_transfers(self, isolated_symbol: str):
+        """
+        Update the transfers made to and from an isolated margin symbol
+
+        sources:
+        https://binance-docs.github.io/apidocs/spot/en/#get-isolated-margin-transfer-history-user_data
+
+        :param isolated_symbol: isolated margin symbol of trading
+        :type isolated_symbol: str
+        :return:
+        :rtype:
+        """
+        latest_time = self.db.get_last_isolated_transfer_time(isolated_symbol=isolated_symbol)
+        current = 1
+
+        while True:
+            params = {
+                'symbol': isolated_symbol,
+                'current': current,
+                'startTime': latest_time + 1,
+                'size': 100,
+            }
+
+            # no built-in method yet in python-binance for margin/interestHistory
+            client_params = {
+                'method': 'get',
+                'path': 'margin/isolated/transfer',
+                'signed': True,
+                'data': params
+            }
+            transfers = self._call_binance_client('_request_margin_api', client_params)
+
+            for transfer in transfers['rows']:
+                if (transfer['transFrom'], transfer['transTo']) == ('SPOT', 'ISOLATED_MARGIN'):
+                    transfer_type = 'IN'
+                elif (transfer['transFrom'], transfer['transTo']) == ('SPOT', 'ISOLATED_MARGIN'):
+                    transfer_type = 'OUT'
+                else:
+                    raise ValueError(f"unrecognised transfer: {transfer['transFrom']} -> {transfer['transTo']}")
+
+                self.db.add_isolated_transfer(transfer_id=transfer['txId'],
+                                              transfer_type=transfer_type,
+                                              transfer_time=transfer['timestamp'],
+                                              isolated_symbol=isolated_symbol,
+                                              asset=transfer['asset'],
+                                              amount=transfer['amount'],
+                                              auto_commit=False)
+
+            if len(transfers['rows']):
+                current += 1  # next page
+                self.db.commit()
+            else:
+                break
 
     def update_isolated_margin_interests(self, symbols_info: Optional[List[Dict]] = None):
         """

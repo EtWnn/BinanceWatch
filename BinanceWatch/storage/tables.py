@@ -357,6 +357,26 @@ ISOLATED_MARGIN_INTEREST_TABLE = Table(
     ]
 )
 
+ISOLATED_MARGIN_TRANSFER_TABLE = Table(
+    "isolated_margin_table",
+    [
+        'trfType',
+        'trfTime',
+        'symbol',
+        'asset',
+        'amount'
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL'
+    ],
+    primary_key='tranId',
+    primary_key_sql_type='INTEGER'
+)
+
 UNIVERSAL_TRANSFER_TABLE = Table(
     "universal_transfer_table",
     [
