@@ -1,5 +1,5 @@
 ===================================
-Welcome to BinanceWatch v0.1.4dev
+Welcome to BinanceWatch v0.1.4
 ===================================
 
 Note
