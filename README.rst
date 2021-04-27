@@ -49,6 +49,15 @@ It currently supports:
 - Cross Margin Loans
 - Cross Margin Interests
 
+
+- Isolated Margin Trades
+- Isolated Margin Repayment
+- Isolated Margin Loans
+- Isolated Margin Interests
+- Isolated Margin Transfers **\***
+
+**\***: see ``Known Issues`` section below.
+
 Quick Tour
 ----------
 
@@ -131,3 +140,4 @@ Some endpoints are not yet provided by Binance, so they can't be implemented in 
 - Fiat withdraws and deposits
 - Locked stacking history
 - Direct purchases with debit card
+- Some isolated margin transfers are not picked up by the API, the reason is unknown at the moment (**I am looking for testers**)

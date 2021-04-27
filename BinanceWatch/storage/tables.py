@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import List, Optional
 
 
@@ -6,6 +5,7 @@ class Table:
     """
     This class represent a table in a database. All columns names are dynamic attributes
     @DynamicAttrs
+    This class is used to describe the tables that will be used to in the database
     """
 
     def __init__(self, name: str, columns_names: List[str], columns_sql_types: List[str],
@@ -268,6 +268,113 @@ CROSS_MARGIN_INTEREST_TABLE = Table(
         'REAL',
         'TEXT'
     ]
+)
+
+ISOLATED_MARGIN_TRADE_TABLE = Table(
+    'isolated_margin_trade',
+    [
+        'tradeId',
+        'tdTime',
+        'symbol',
+        'asset',
+        'refAsset',
+        'qty',
+        'price',
+        'fee',
+        'feeAsset',
+        'isBuyer'
+
+    ],
+    [
+        'INTEGER',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL',
+        'REAL',
+        'TEXT',
+        'INTEGER'
+    ]
+)
+
+ISOLATED_MARGIN_LOAN_TABLE = Table(
+    "isolated_margin_loan_table",
+    [
+        'loanTime',
+        'symbol',
+        'asset',
+        'principal',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
+
+ISOLATED_MARGIN_REPAY_TABLE = Table(
+    "isolated_margin_repay_table",
+    [
+        'repayTime',
+        'symbol',
+        'asset',
+        'principal',
+        'interest',
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'REAL'
+    ],
+    primary_key='txId',
+    primary_key_sql_type='INTEGER'
+
+)
+
+ISOLATED_MARGIN_INTEREST_TABLE = Table(
+    "isolated_margin_interest_table",
+    [
+        'interestTime',
+        'symbol',
+        'asset',
+        'interest',
+        'interestType'
+    ],
+    [
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL',
+        'TEXT'
+    ]
+)
+
+ISOLATED_MARGIN_TRANSFER_TABLE = Table(
+    "isolated_margin_table",
+    [
+        'trfType',
+        'trfTime',
+        'symbol',
+        'asset',
+        'amount'
+    ],
+    [
+        'TEXT',
+        'INTEGER',
+        'TEXT',
+        'TEXT',
+        'REAL'
+    ],
+    primary_key='tranId',
+    primary_key_sql_type='INTEGER'
 )
 
 UNIVERSAL_TRANSFER_TABLE = Table(
