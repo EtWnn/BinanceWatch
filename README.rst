@@ -135,9 +135,10 @@ Known Issues:
 -------------
 
 
-Some endpoints are not yet provided by Binance, so they can't be implemented in this library:
+- Some endpoints are not yet provided by Binance, so they can't be implemented in this library:
 
-- Fiat withdraws and deposits
-- Locked stacking history
-- Direct purchases with debit card
+    - Fiat withdraws and deposits
+    - Locked stacking history
+    - Direct purchases with debit card
+
 - Some isolated margin transfers are not picked up by the API, the reason is unknown at the moment (**I am looking for testers**)
