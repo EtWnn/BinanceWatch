@@ -88,7 +88,6 @@ class BinanceManager:
         self.update_isolated_margin_interests(symbols_info)
         self.update_isolated_margin_repays(symbols_info)
 
-
     def update_lending(self):
         """
         call all update methods related to lending activities
@@ -275,7 +274,7 @@ class BinanceManager:
             for transfer in transfers['rows']:
                 if (transfer['transFrom'], transfer['transTo']) == ('SPOT', 'ISOLATED_MARGIN'):
                     transfer_type = 'IN'
-                elif (transfer['transFrom'], transfer['transTo']) == ('SPOT', 'ISOLATED_MARGIN'):
+                elif (transfer['transFrom'], transfer['transTo']) == ('ISOLATED_MARGIN', 'SPOT'):
                     transfer_type = 'OUT'
                 else:
                     raise ValueError(f"unrecognised transfer: {transfer['transFrom']} -> {transfer['transTo']}")
