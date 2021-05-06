@@ -75,13 +75,15 @@ class BinanceManager:
 
         # we will now update only the isolated symbols that have been funded
         transfers = self.db.get_isolated_transfers()
-        symbols_info = []
+        symbols_info = set()
         for _, _, _, symbol, token, _ in transfers:
             if symbol.startswith(token):
                 asset, ref_asset = token, symbol[len(token):]
             else:
                 asset, ref_asset = symbol[:-len(token)], token
-            symbols_info.append({'asset': asset, 'ref_asset': ref_asset, 'symbol': symbol})
+            symbols_info.add((asset, ref_asset, symbol))
+        symbols_info = [{'asset': asset, 'ref_asset': ref_asset, 'symbol': symbol} for asset, ref_asset, symbol in
+                        symbols_info]
 
         self.update_isolated_margin_trades(symbols_info)
         self.update_isolated_margin_loans(symbols_info)
