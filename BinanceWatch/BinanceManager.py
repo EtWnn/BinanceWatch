@@ -275,7 +275,7 @@ class BinanceManager:
             for transfer in transfers['rows']:
                 if (transfer['transFrom'], transfer['transTo']) == ('SPOT', 'ISOLATED_MARGIN'):
                     transfer_type = 'IN'
-                elif (transfer['transFrom'], transfer['transTo']) == ('SPOT', 'ISOLATED_MARGIN'):
+                elif (transfer['transFrom'], transfer['transTo']) == ('ISOLATED_MARGIN', 'SPOT'):
                     transfer_type = 'OUT'
                 else:
                     raise ValueError(f"unrecognised transfer: {transfer['transFrom']} -> {transfer['transTo']}")
