@@ -88,7 +88,6 @@ class BinanceManager:
         self.update_isolated_margin_interests(symbols_info)
         self.update_isolated_margin_repays(symbols_info)
 
-
     def update_lending(self):
         """
         call all update methods related to lending activities
