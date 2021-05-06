@@ -491,7 +491,7 @@ class BinanceManager:
             elif archived:  # switching to non archived repays
                 current = 1
                 archived = False
-                latest_time = self.db.get_last_repay_time(asset=asset)
+                latest_time = self.db.get_last_repay_time(asset=asset, isolated_symbol=isolated_symbol)
             else:
                 break
 
