@@ -13,6 +13,7 @@ class LoggerGenerator:
 
     _default_log_level = logging.WARNING
     _default_write_file = False
+    _default_write_console = False
     _logger_count = 0
 
     @staticmethod
@@ -40,7 +41,7 @@ class LoggerGenerator:
         LoggerGenerator._default_write_file = write_file
 
     @staticmethod
-    def get_logger(logger_name: str, write_file: Optional[bool] = None,
+    def get_logger(logger_name: str, write_file: Optional[bool] = None, write_console: Optional[bool] = None,
                    log_level: Optional[int] = None) -> logging.Logger:
         """
         create a logger that will display messages according to the log level threshold. If specified, it will
@@ -48,8 +49,10 @@ class LoggerGenerator:
 
         :param logger_name: name of the logger (a unique logger id will be added after the name)
         :type logger_name: str
-        :param write_file: if the logger should save the message in a file
+        :param write_file: if the logger should save the messages in a file
         :type write_file: bool
+        :param write_console: if the logger should display the messages in the console
+        :type write_console: bool
         :param log_level: threshold to display the message
         :type log_level: logging enum (ex: logging.WARNING)
         :return: the logger object
@@ -59,6 +62,8 @@ class LoggerGenerator:
             log_level = LoggerGenerator._default_log_level
         if write_file is None:
             write_file = LoggerGenerator._default_write_file
+        if write_console is None:
+            write_console = LoggerGenerator._default_write_console
 
         # create logger
         logger = logging.getLogger(f"lg_{LoggerGenerator._logger_count}_{logger_name}")
@@ -77,11 +82,12 @@ class LoggerGenerator:
             fh.setFormatter(formatter)
             logger.addHandler(fh)
 
-        # create console handler for logger.
-        ch = logging.StreamHandler()
-        ch.setLevel(level=log_level)
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
+        if write_console:
+            # create console handler for logger.
+            ch = logging.StreamHandler()
+            ch.setLevel(level=log_level)
+            ch.setFormatter(formatter)
+            logger.addHandler(ch)
 
         return logger
 
